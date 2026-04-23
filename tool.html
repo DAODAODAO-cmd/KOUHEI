@@ -300,6 +300,67 @@
   .srt-text.dual    { color: var(--accent2); font-weight: 500; }
   .srt-text.changed { color: var(--green); }
 
+  /* Editable result text */
+  .srt-text.editable {
+    cursor: text;
+    border-radius: 4px;
+    padding: 3px 6px;
+    margin: -3px -6px;
+    transition: background 0.15s, box-shadow 0.15s;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .srt-text.editable:hover {
+    background: rgba(99,85,212,0.05);
+    box-shadow: inset 0 0 0 1px var(--border);
+  }
+  .srt-text.editable:focus {
+    outline: none;
+    background: #fff;
+    box-shadow: inset 0 0 0 1.5px var(--accent);
+  }
+  .srt-text.edited::after {
+    content: '✎ 已编辑';
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    color: var(--accent);
+    background: rgba(99,85,212,0.1);
+    padding: 1px 5px;
+    border-radius: 3px;
+    margin-left: 6px;
+    vertical-align: middle;
+  }
+  .edit-toolbar {
+    display: flex;
+    gap: 6px;
+    padding: 6px 16px;
+    background: rgba(99,85,212,0.04);
+    border-bottom: 1px solid var(--border);
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text2);
+    align-items: center;
+    flex-shrink: 0;
+  }
+  .edit-toolbar .hint { color: var(--text3); letter-spacing: 0.04em; }
+  .edit-toolbar .spacer { flex: 1; }
+  .edit-toolbar button {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 0.04em;
+    background: transparent;
+    border: 1px solid var(--border);
+    color: var(--text2);
+    padding: 3px 8px;
+    border-radius: 3px;
+    cursor: pointer;
+    transition: all 0.15s;
+  }
+  .edit-toolbar button:hover { border-color: var(--accent); color: var(--accent); }
+
   /* ghost cell */
   .cmp-ghost {
     display: flex; align-items: center;
@@ -493,6 +554,7 @@
         <div class="tab" id="tabOut" onclick="setTab('out')">处理结果</div>
         <div class="tab" id="tabIn"  onclick="setTab('in')">原始内容</div>
       </div>
+      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-left:14px;">✎ 点击右侧「处理结果」即可直接编辑文本</div>
       <div class="stats" id="statsBar" style="display:none">
         <div>原始 <span id="statIn">0</span> 条</div>
         <div>输出 <span id="statOut">0</span> 条</div>
@@ -815,10 +877,10 @@ function cleanText(text,opts,symbolChars){
   if(opts.comments){
     // protect ((...)) first: replace with placeholder, delete (), restore
     const _dbl=[];
-    text=text.replace(/\(\(([^)]*)\)\)/g,(_,inner)=>{_dbl.push(inner);return` DBL${_dbl.length-1} `;});
+    text=text.replace(/\(\(([^)]*)\)\)/g,(_,inner)=>{_dbl.push(inner);return` DBL${_dbl.length-1} `;});
     text=text.replace(/\([^)]*\)/g,'');       // half-width () deleted
     text=text.replace(/（[^）]*）/g,'');         // full-width （）deleted
-    text=text.replace(/ DBL(\d+) /g,(_,n)=>` ${_dbl[+n]} `); // restore content only
+    text=text.replace(/ DBL(\d+) /g,(_,n)=>` ${_dbl[+n]} `); // restore content only
   }
   if(opts.symbols && symbolChars){
     // Chars that should only be removed at start/end of text (not mid-sentence)
@@ -912,6 +974,8 @@ document.getElementById('btnProcess').addEventListener('click',()=>{
 
 document.getElementById('btnDownload').addEventListener('click',()=>{
   const fname=document.getElementById('fileName').textContent.replace(/\.[^.]+$/,'')+'_cleaned.srt';
+  // Rebuild SRT from current outputBlocks (reflects any edits made in preview)
+  outputSRT=buildSRT(outputBlocks);
   // encode as base64 data URI to avoid createObjectURL sandbox restrictions
   const bytes=new TextEncoder().encode(outputSRT);
   let binary='';
@@ -999,10 +1063,11 @@ function renderCompare(){
       rightCell=`<div class="cmp-ghost"><div class="cmp-ghost-line">↑ 已合并</div></div>`;
     } else {
       renderedOut.add(ob);
-      const cls=ob._dual?'srt-text dual':ob._changed?'srt-text changed':'srt-text';
+      const baseCls=ob._dual?'srt-text dual':ob._changed?'srt-text changed':'srt-text';
+      const editedCls=ob._edited?' edited':'';
       rightCell=`<div class="srt-num">${ob.num}</div>
         <div class="srt-time">${ob.start} → ${ob.end}</div>
-        <div class="${cls}">${escHtml(ob.text)}</div>`;
+        <div class="${baseCls} editable${editedCls}" contenteditable="true" spellcheck="false" data-out-idx="${outputBlocks.indexOf(ob)}">${escHtml(ob.text)}</div>`;
     }
 
     rows+=`<div class="cmp-row">
@@ -1024,12 +1089,14 @@ function renderCompare(){
 function renderPanel(id,blocks,isOut){
   const el=document.getElementById(id);
   if(!blocks.length){el.innerHTML='<div style="color:var(--text3);padding:20px">（无内容）</div>';return;}
-  el.innerHTML=blocks.slice(0,500).map(b=>{
-    const cls=isOut&&b._dual?'srt-text dual':isOut&&b._changed?'srt-text changed':'srt-text';
+  el.innerHTML=blocks.slice(0,500).map((b,idx)=>{
+    const baseCls=isOut&&b._dual?'srt-text dual':isOut&&b._changed?'srt-text changed':'srt-text';
+    const editedCls=isOut&&b._edited?' edited':'';
+    const editAttrs=isOut?` editable${editedCls}" contenteditable="true" spellcheck="false" data-out-idx="${idx}`:'';
     return `<div class="srt-block">
       <div class="srt-num">${b.num}</div>
       <div class="srt-time">${b.start} → ${b.end}</div>
-      <div class="${cls}">${escHtml(b.text)}</div>
+      <div class="${baseCls}${editAttrs}">${escHtml(b.text)}</div>
     </div>`;
   }).join('');
   if(blocks.length>500) el.innerHTML+=`<div style="color:var(--text3);padding:10px;font-size:11px">… 仅显示前 500 条，完整内容请下载文件</div>`;
@@ -1170,6 +1237,51 @@ function downloadSplit(lineIndex){
 
 document.getElementById('btnSplitLine1').addEventListener('click',()=>downloadSplit(0));
 document.getElementById('btnSplitLine2').addEventListener('click',()=>downloadSplit(1));
+
+// ── Editable result text ────────────────────────────────────────────────────
+// Event delegation on the main content area. Handles input events on any
+// .srt-text.editable element and syncs back to outputBlocks[dataset.outIdx].
+function handleResultEdit(e){
+  const el = e.target.closest('.srt-text.editable');
+  if(!el) return;
+  const idx = parseInt(el.dataset.outIdx,10);
+  if(isNaN(idx) || !outputBlocks[idx]) return;
+  const newText = el.innerText.replace(/\r?\n/g,' ').trim();
+  const block = outputBlocks[idx];
+  if(newText === block.text) return;
+  block.text = newText;
+  block._edited = true;
+  // visual marker
+  el.classList.add('edited');
+  // rebuild SRT for stats/download consistency
+  outputSRT = buildSRT(outputBlocks);
+  setLog('ok','已修改第 '+block.num+' 条字幕（下载时会保存你的修改）');
+}
+
+// Convert Enter to a linebreak-free edit: prevent adding newlines / HTML.
+function handleResultKey(e){
+  const el = e.target.closest('.srt-text.editable');
+  if(!el) return;
+  if(e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    el.blur();
+  }
+}
+
+// Strip HTML on paste to keep it plain text.
+function handleResultPaste(e){
+  const el = e.target.closest('.srt-text.editable');
+  if(!el) return;
+  e.preventDefault();
+  const text = (e.clipboardData||window.clipboardData).getData('text');
+  document.execCommand('insertText', false, text);
+}
+
+const _previewPanels = document.getElementById('previewPanels');
+_previewPanels.addEventListener('input', handleResultEdit);
+_previewPanels.addEventListener('keydown', handleResultKey);
+_previewPanels.addEventListener('paste', handleResultPaste);
+
 </script>
 </body>
 </html>
