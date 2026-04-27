@@ -489,7 +489,7 @@
     <!-- Editable symbols -->
     <div>
       <div class="section-title">清理符号列表（可编辑）</div>
-      <textarea class="edit-field" id="symbolsField" rows="2">♪♬≫・。｡、､《》＜＞〈〉</textarea>
+      <textarea class="edit-field" id="symbolsField" rows="2">♪♬≫・。｡、､《》＜＞〈〉⚟⚞</textarea>
       <div class="edit-hint">直接在框内增删字符，处理时会逐个删除</div>
     </div>
 
@@ -763,8 +763,7 @@ function parseSRT(text){
 }
 
 // ── Processing ────────────────────────────────────────────────────────────────
-function processBlocks(blocksArg){
-  let blocks=[...blocksArg];
+function processBlocks(blocks){
   const opts={
     width:      document.getElementById('opt_width').checked,
     symbols:    document.getElementById('opt_symbols').checked,
@@ -781,43 +780,38 @@ function processBlocks(blocksArg){
   const mergeLimit=parseInt(document.getElementById('mergeLimit').value)||2;
   const symbolChars=document.getElementById('symbolsField').value;
   const textReplace=getReplacements();
-  // Pre-process: merge same-timestamp blocks into one line
-  if(opts.mergesame && blocks.length>1){
-    const _merged=[];
-    let _mi=0;
-    while(_mi<blocks.length){
-      const _cur=blocks[_mi];
-      const _group=[_cur];
-      let _mj=_mi+1;
-      while(_mj<blocks.length && blocks[_mj].start===_cur.start && blocks[_mj].end===_cur.end){
-        _group.push(blocks[_mj]);_mj++;
-      }
-      if(_group.length===1){
-        _merged.push(_cur);
-      } else {
-        const _seen=new Set();
-        const _lines=[];
-        for(const _b of _group){
-          const _t=_b.text.trim();
-          if(_t && !_seen.has(_t)){_seen.add(_t);_lines.push(_t);}
-        }
-        _merged.push({..._cur, text:_lines.join(' ')});
-      }
-      _mi=_mj;
-    }
-    blocks=_merged;
-  }
-
+  let _mergedSameCount=0;
   const stats={merged:0,converted:0};
   const out=[];
   const srcMap={};  // originalIndex -> outBlock (or null if deleted/skipped)
   let i=0;
 
   while(i<blocks.length){
-    const block={...blocks[i]};
+    let block={...blocks[i]};
     if(opts.rubi && block.style==='rubi'){srcMap[i]=null;i++;continue;}
 
-    let group=[block],j=i+1;
+    // Same-timestamp merge: collect all blocks with identical start+end
+    let _sameEnd=i;
+    if(opts.mergesame){
+      while(_sameEnd+1<blocks.length &&
+            blocks[_sameEnd+1].start===block.start &&
+            blocks[_sameEnd+1].end===block.end){
+        _sameEnd++;
+      }
+      if(_sameEnd>i){
+        // Merge text of same-timestamp group into first block
+        const _seen=new Set();
+        const _lines=[];
+        for(let _si=i;_si<=_sameEnd;_si++){
+          const _t=blocks[_si].text.trim();
+          if(_t && !_seen.has(_t)){_seen.add(_t);_lines.push(_t);}
+        }
+        block={...block, text:_lines.join(' ')};
+        _mergedSameCount+=_sameEnd-i;
+      }
+    }
+
+    let group=[block],j=_sameEnd+1;
 
     // Arrow merge: all formats
     if(opts.mergeArrow){
@@ -893,9 +887,14 @@ function processBlocks(blocksArg){
       out.push(outBlock);
       for(let s=chunkStart;s<=chunkEnd;s++) srcMap[s]=outBlock;
     }
-    i=j;
+    // also map same-timestamp secondary indices (they point to same outBlock as first)
+    if(opts.mergesame && _sameEnd>i){
+      const _firstOut=out.length>0?out[out.length-1]:null;
+      if(_firstOut) for(let s=j;s<=_sameEnd;s++) srcMap[s]=_firstOut;
+    }
+    i=Math.max(j,_sameEnd+1);
   }
-  return{blocks:out,stats,srcMap};
+  return{blocks:out,stats,srcMap,inputBlocks:blocks,mergedSameCount:_mergedSameCount};
 }
 
 function cleanText(text,opts,symbolChars){
@@ -1001,7 +1000,8 @@ document.getElementById('btnProcess').addEventListener('click',()=>{
     document.getElementById('statsBar').style.display='flex';
     document.getElementById('btnDownload').disabled=false;
     renderPanels();
-    setLog('ok',`处理完成！${parsedBlocks.length} 条 → ${outputBlocks.length} 条，合并 ${result.stats.merged} 行，转换 ${result.stats.converted} 行`);
+    const _sameNote=result.mergedSameCount>0?`，同时间戳合并 ${result.mergedSameCount} 条`:'';
+    setLog('ok',`处理完成！${parsedBlocks.length} 条 → ${outputBlocks.length} 条，合并 ${result.stats.merged} 行，转换 ${result.stats.converted} 行${_sameNote}`);
   }catch(e){setLog('err','处理出错：'+e.message);console.error(e);}
 });
 
