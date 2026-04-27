@@ -480,6 +480,10 @@
         <span class="toggle-label">常用词替换（见下方列表）</span>
         <label class="toggle"><input type="checkbox" id="opt_textreplace" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
+      <div class="toggle-row">
+        <span class="toggle-label">相同时间戳字幕合并为一行</span>
+        <label class="toggle"><input type="checkbox" id="opt_mergesame"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+      </div>
     </div>
 
     <!-- Editable symbols -->
@@ -759,7 +763,8 @@ function parseSRT(text){
 }
 
 // ── Processing ────────────────────────────────────────────────────────────────
-function processBlocks(blocks){
+function processBlocks(blocksArg){
+  let blocks=[...blocksArg];
   const opts={
     width:      document.getElementById('opt_width').checked,
     symbols:    document.getElementById('opt_symbols').checked,
@@ -771,10 +776,38 @@ function processBlocks(blocks){
     dual:       document.getElementById('opt_dual').checked,
     digit:      document.getElementById('opt_digit').checked,
     textreplace:document.getElementById('opt_textreplace').checked,
+    mergesame:  document.getElementById('opt_mergesame').checked,
   };
   const mergeLimit=parseInt(document.getElementById('mergeLimit').value)||2;
   const symbolChars=document.getElementById('symbolsField').value;
   const textReplace=getReplacements();
+  // Pre-process: merge same-timestamp blocks into one line
+  if(opts.mergesame && blocks.length>1){
+    const _merged=[];
+    let _mi=0;
+    while(_mi<blocks.length){
+      const _cur=blocks[_mi];
+      const _group=[_cur];
+      let _mj=_mi+1;
+      while(_mj<blocks.length && blocks[_mj].start===_cur.start && blocks[_mj].end===_cur.end){
+        _group.push(blocks[_mj]);_mj++;
+      }
+      if(_group.length===1){
+        _merged.push(_cur);
+      } else {
+        const _seen=new Set();
+        const _lines=[];
+        for(const _b of _group){
+          const _t=_b.text.trim();
+          if(_t && !_seen.has(_t)){_seen.add(_t);_lines.push(_t);}
+        }
+        _merged.push({..._cur, text:_lines.join(' ')});
+      }
+      _mi=_mj;
+    }
+    blocks=_merged;
+  }
+
   const stats={merged:0,converted:0};
   const out=[];
   const srcMap={};  // originalIndex -> outBlock (or null if deleted/skipped)
