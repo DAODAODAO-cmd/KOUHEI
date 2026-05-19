@@ -898,8 +898,8 @@ function processBlocks(blocks){
 }
 
 function cleanText(text,opts,symbolChars){
-  // If line contains both ・ and 〜 simultaneously → discard entire line
-  if(opts.symbols && text.includes('・') && text.includes('〜')){
+  // If line contains ・ AND any tilde variant (〜U+301C or ～U+FF5E) → discard entire line
+  if(opts.symbols && text.includes('・') && (text.includes('〜') || text.includes('～'))){
     return '';
   }
   text=text.replace(/\{[^}]*\}/g,'');      // ASS tags {..}
