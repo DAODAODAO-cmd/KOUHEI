@@ -898,6 +898,10 @@ function processBlocks(blocks){
 }
 
 function cleanText(text,opts,symbolChars){
+  // If line contains both ・ and 〜 simultaneously → discard entire line
+  if(opts.symbols && text.includes('・') && text.includes('〜')){
+    return '';
+  }
   text=text.replace(/\{[^}]*\}/g,'');      // ASS tags {..}
   text=text.replace(/<[^>]*>/g,'');          // HTML/VTT tags <c.xxx> <b> </c> etc
   text=text.replace(/\\N/gi,' ');
@@ -982,7 +986,16 @@ function formatDigit(text){
 }
 
 function buildSRT(blocks){
-  return blocks.map((b,i)=>`${i+1}\n${b.start} --> ${b.end}\n${b.text}\n`).join('\n');
+  // CRLF for PR compatibility; skip empty blocks; renumber continuously
+  let num=1;
+  const parts=[];
+  for(const b of blocks){
+    const t=(b.text||'').trim();
+    if(!t) continue;
+    parts.push(`${num}\r\n${b.start} --> ${b.end}\r\n${t.replace(/\n/g,'\r\n')}\r\n`);
+    num++;
+  }
+  return parts.join('\r\n');
 }
 
 // ── UI ────────────────────────────────────────────────────────────────────────
