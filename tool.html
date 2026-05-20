@@ -484,6 +484,12 @@
         <span class="toggle-label">相同时间戳字幕合并为一行</span>
         <label class="toggle"><input type="checkbox" id="opt_mergesame"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
+      <div class="section-title" style="margin-top:14px;">额外输出功能</div>
+      <div class="toggle-row">
+        <span class="toggle-label">下载时 SRT 条目之间空两行</span>
+        <label class="toggle"><input type="checkbox" id="opt_srt_blank2"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+      </div>
+      <div class="edit-hint">默认关闭。开启后只影响主区“下载 .srt 文件”的输出格式，不改变清理、预览、ASS/VTT 转换、双语拆分等其他功能。</div>
     </div>
 
     <!-- Editable symbols -->
@@ -998,6 +1004,20 @@ function buildSRT(blocks){
   return parts.join('\r\n');
 }
 
+function buildSRTWithExtraBlankLines(blocks){
+  // Optional export-only format: keep original processing untouched,
+  // but put TWO empty lines between SRT cues when downloading.
+  let num=1;
+  const parts=[];
+  for(const b of blocks){
+    const t=(b.text||'').trim();
+    if(!t) continue;
+    parts.push(`${num}\r\n${b.start} --> ${b.end}\r\n${t.replace(/\n/g,'\r\n')}`);
+    num++;
+  }
+  return parts.join('\r\n\r\n\r\n') + (parts.length ? '\r\n' : '');
+}
+
 // ── UI ────────────────────────────────────────────────────────────────────────
 document.getElementById('btnProcess').addEventListener('click',()=>{
   if(!parsedBlocks.length) return;
@@ -1021,7 +1041,9 @@ document.getElementById('btnProcess').addEventListener('click',()=>{
 document.getElementById('btnDownload').addEventListener('click',()=>{
   const fname=document.getElementById('fileName').textContent.replace(/\.[^.]+$/,'')+'_cleaned.srt';
   // Rebuild SRT from current outputBlocks (reflects any edits made in preview)
-  outputSRT=buildSRT(outputBlocks);
+  // Extra blank-line format is an export-only option, so other features stay unchanged.
+  const useExtraBlankLines=document.getElementById('opt_srt_blank2')?.checked;
+  outputSRT=useExtraBlankLines ? buildSRTWithExtraBlankLines(outputBlocks) : buildSRT(outputBlocks);
   // encode as base64 data URI to avoid createObjectURL sandbox restrictions
   const bytes=new TextEncoder().encode(outputSRT);
   let binary='';
