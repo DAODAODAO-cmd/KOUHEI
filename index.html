@@ -309,16 +309,6 @@
     letter-spacing: 0.24em;
     padding: 0 8px;
   }
-  .mascot-img {
-    width: 100%;
-    height: auto;
-    object-fit: contain;
-    display: block;
-    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
-    cursor: pointer;
-    user-select: none; -webkit-user-drag: none;
-    transform-origin: 50% 90%;
-  }
   /* one-shot wiggle when card hovered */
   .mascot-card:hover .mascot-meta .dot {
     animation: wag-dot 1.2s ease-in-out infinite;
@@ -364,7 +354,7 @@
     position: relative;
     width: 100%;
     aspect-ratio: 3 / 2;
-    overflow: hidden;
+    overflow: visible;
     border-radius: 10px;
     background: var(--paper-2);
   }
@@ -374,7 +364,7 @@
     object-fit: contain;
     object-position: center;
     display: block;
-    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s;
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
     cursor: pointer;
     user-select: none; -webkit-user-drag: none;
     transform-origin: 50% 90%;
@@ -387,10 +377,6 @@
   .mascot-card.flipped .mascot-default { opacity: 0; pointer-events: none; }
   .mascot-card.flipped .mascot-alt     { opacity: 1; transform: scale(1); }
   .mascot-default:hover {
-    animation: mascot-bounce 0.9s ease-in-out infinite;
-    filter: drop-shadow(0 8px 16px rgba(74,107,142,0.18));
-  }
-  .mascot-card:not(.flipped) .mascot-default:hover {
     animation: mascot-bounce 0.9s ease-in-out infinite;
     filter: drop-shadow(0 8px 16px rgba(74,107,142,0.18));
   }
@@ -601,7 +587,7 @@
 <script>
 (() => {
   const TAGS = [
-    '你好，我是 Kibi · 字幕组吉祥物',
+    '你好，我是 Kibi · 武田航平爱犬',
     '汪？',
     '又被你找到了',
     '熬夜做轴会被我看见的',
