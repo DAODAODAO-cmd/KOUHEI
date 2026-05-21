@@ -546,6 +546,9 @@
         <p>点击或拖放 .ass / .srt / .vtt 文件</p>
         <div class="filename" id="fileName">未选择文件</div>
       </div>
+      <button class="btn btn-outline" id="btnConvDownload" disabled
+        style="margin-top:6px;font-size:11px;display:none;"
+        title="不做任何清理，仅转换格式和时间轴">⚙ 直接转格式下载（不清理）</button>
     </div>
 
     <div>
@@ -843,6 +846,11 @@ function handleFile(file){
   const ext=file.name.split('.').pop().toLowerCase();
   if(!['ass','srt','vtt'].includes(ext)){setLog('err','仅支持 .ass、.srt 和 .vtt 文件');return;}
   document.getElementById('fileName').textContent=file.name;
+  const _cb=document.getElementById('btnConvDownload');
+  if(_cb){
+    if(ext==='ass'||ext==='vtt'){_cb.style.display='';_cb.disabled=false;}
+    else{_cb.style.display='none';_cb.disabled=true;}
+  }
   const reader=new FileReader();
   reader.onload=e=>{
     rawText=e.target.result;
