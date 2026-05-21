@@ -160,6 +160,48 @@
     background: var(--accent);
     box-shadow: 0 0 0 0.06em var(--accent-tint);
   }
+  .tool-title .period {
+    position: relative;
+  }
+  .tool-title .period::after {
+    content: "↑ 我劝你不要连续点";
+    position: absolute;
+    bottom: calc(100% + 10px);
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 11px;
+    font-weight: 500;
+    white-space: nowrap;
+    padding: 6px 12px;
+    border-radius: 8px;
+    letter-spacing: 0.01em;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s 0.3s;
+    box-shadow: 0 2px 8px rgba(20,18,28,0.20);
+  }
+  .tool-title .period::before {
+    content: "";
+    position: absolute;
+    bottom: calc(100% + 3px);
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0; height: 0;
+    border: 5px solid transparent;
+    border-top-color: var(--ink);
+    border-bottom: 0;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s 0.3s;
+    z-index: 10;
+  }
+  .tool-title .period:hover::after,
+  .tool-title .period:hover::before {
+    opacity: 1;
+  }
 
   /* COPY BLOCK */
   .lead {
@@ -560,7 +602,7 @@
 <script>
 (() => {
   const TAGS = [
-    '你好，我是 Kibi · 字幕组吉祥物',
+    '你好，我是 Kibi · 武田航平爱犬',
     '汪？',
     '又被你找到了',
     '熬夜做轴会被我看见的',
@@ -569,7 +611,13 @@
     'お疲れ様です',
     '帮你看一眼下载文件夹...',
   ];
-  let tagIdx = 0;
+  // tagIdx 全局递增，每次出现不同句子
+  let tagIdx = -1;
+  function nextTag() {
+    tagIdx = (tagIdx + 1) % TAGS.length;
+    return TAGS[tagIdx];
+  }
+
   const sticker = document.getElementById('kibiSticker');
   const tag = document.getElementById('kibiTag');
   const period = document.getElementById('periodEgg');
@@ -580,17 +628,17 @@
   let hideTimer = null;
   let periodTaps = [];
   let mascotTaps = [];
+  let periodTriggerCount = 0;
 
   function showKibi(msg) {
+    const text = msg || nextTag();
+    tag.textContent = text;
     if (shown) {
-      tagIdx = (tagIdx + 1) % TAGS.length;
-      tag.textContent = msg || TAGS[tagIdx];
       clearTimeout(hideTimer);
       hideTimer = setTimeout(hideKibi, 8000);
       return;
     }
     shown = true;
-    tag.textContent = msg || TAGS[tagIdx];
     sticker.classList.add('in');
     tag.classList.add('in');
     document.body.animate(
@@ -615,7 +663,12 @@
       const now = Date.now();
       periodTaps.push(now);
       while (periodTaps.length && now - periodTaps[0] > 4000) periodTaps.shift();
-      if (periodTaps.length >= 3) { periodTaps.length = 0; showKibi('你按到我了'); }
+      if (periodTaps.length >= 3) {
+        periodTaps.length = 0;
+        periodTriggerCount++;
+        const msg = periodTriggerCount === 1 ? '你按到我了' : '猜猜还有哪里可以找到我～';
+        showKibi(msg);
+      }
     });
   }
 
@@ -644,7 +697,6 @@
   if (pawTrigger) {
     pawTrigger.addEventListener('click', (e) => {
       e.stopPropagation();
-      tagIdx = (tagIdx + 1) % TAGS.length;
       showKibi();
     });
   }
