@@ -410,19 +410,81 @@
   .log-bar.warn { color: var(--yellow); }
 
 
+  /* Sidebar main tabs */
+  .sidebar-tabs {
+    display:flex; border-bottom:2px solid var(--border);
+    margin:-20px -18px 16px; flex-shrink:0;
+  }
+  .sidebar-tab {
+    flex:1; padding:10px 6px; font-size:12px; font-weight:500;
+    text-align:center; cursor:pointer; border:none; background:transparent;
+    color:var(--text3); border-bottom:2px solid transparent;
+    margin-bottom:-2px; transition:all 0.15s;
+  }
+  .sidebar-tab.active { color:var(--accent); border-bottom-color:var(--accent); }
+  .sidebar-tab:hover:not(.active) { color:var(--text2); }
+  .sidebar-panel { display:flex; flex-direction:column; gap:20px; }
+  .sidebar-panel.hidden { display:none; }
+
+  /* Bilingual cards */
+  .bi-card {
+    background:var(--bg3); border:1px solid var(--border);
+    border-radius:10px; padding:14px; display:flex; flex-direction:column; gap:10px;
+  }
+  .bi-card-head { display:flex; align-items:flex-start; gap:10px; }
+  .bi-card-icon { font-size:20px; flex-shrink:0; margin-top:1px; }
+  .bi-card-title { font-size:13px; font-weight:600; color:var(--text); }
+  .bi-card-hint  { font-size:10px; color:var(--text3); margin-top:1px; }
+  .bi-upload-row { display:flex; align-items:center; gap:6px; }
+  .bi-upload-box {
+    flex:1; border:1.5px dashed var(--border); border-radius:7px;
+    padding:10px 6px; text-align:center; cursor:pointer;
+    background:var(--bg2); transition:all 0.2s;
+  }
+  .bi-upload-box:hover, .bi-upload-box.drag-over {
+    border-color:var(--accent); background:rgba(99,85,212,0.05);
+  }
+  .bi-upload-box input { display:none; }
+  .bi-upload-label { font-size:11px; font-weight:600; color:var(--text); }
+  .bi-upload-sub   { font-size:9px; color:var(--text3); margin-top:1px; }
+  .bi-upload-box .filename { font-size:9px; color:var(--accent); margin-top:4px; font-family:'Space Mono',monospace; word-break:break-all; }
+  .bi-upload-sep { font-size:18px; color:var(--text3); flex-shrink:0; }
+  .bi-offset-row {
+    display:flex; align-items:center; gap:6px;
+    background:var(--bg2); border-radius:6px; padding:6px 10px;
+    border:1px solid var(--border);
+  }
+  .bi-offset-label { font-size:11px; color:var(--text2); flex:1; }
+  .bi-offset-btn {
+    width:26px; height:26px; border:1px solid var(--border);
+    border-radius:5px; background:var(--bg3); cursor:pointer;
+    font-size:14px; line-height:1; display:flex;
+    align-items:center; justify-content:center; color:var(--text2);
+    transition:all 0.15s;
+  }
+  .bi-offset-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .bi-undo-btn { margin-left:2px; }
+  .bi-offset-val {
+    font-family:'Space Mono',monospace; font-size:13px;
+    min-width:26px; text-align:center; color:var(--text);
+  }
+  .bi-info { font-size:10px; color:var(--text3); font-family:'Space Mono',monospace; min-height:14px; }
+
   ::-webkit-scrollbar { width: 5px; height: 5px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   .mp-row {
-    display:grid; grid-template-columns:32px 1fr 1fr 26px;
-    border-bottom:1px solid var(--border); align-items:stretch; min-height:48px;
+    display:grid; grid-template-columns:28px 1fr 1fr 44px;
+    gap:0; border-bottom:1px solid var(--border);
+    align-items:center; min-height:44px;
   }
   .mp-row:last-child { border-bottom:none; }
   .mp-idx {
-    font-family:'Space Mono',monospace; font-size:9px; color:var(--text3);
-    padding:6px 4px; text-align:center; border-right:1px solid var(--border);
-    align-self:stretch; display:flex; align-items:center; justify-content:center;
+    font-family:'Space Mono',monospace; font-size:9px;
+    color:var(--text3); padding:6px 4px; text-align:center;
+    border-right:1px solid var(--border); align-self:stretch;
+    display:flex; align-items:center; justify-content:center;
   }
   .mp-jp {
     padding:5px 8px; font-size:11px; color:var(--text);
@@ -430,29 +492,22 @@
   }
   .mp-cn {
     padding:5px 6px; font-size:11px; color:var(--accent2);
-    border-right:1px solid var(--border); line-height:1.5; word-break:break-all;
+    border-right:1px solid var(--border); line-height:1.5;
+    word-break:break-all;
   }
-  .mp-cn.empty { color:var(--text3); }
-  .mp-edit {
-    min-height:1.4em; outline:none; border-radius:3px;
-    padding:1px 3px; cursor:text;
+  .mp-cn.empty { color:var(--text3); font-style:italic; }
+  .mp-btns {
+    display:flex; flex-direction:column;
+    align-items:center; gap:2px; padding:4px;
   }
-  .mp-edit:focus {
-    background:rgba(99,85,212,0.07);
-    box-shadow:0 0 0 1.5px var(--accent);
-  }
-  .mp-btns { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:3px 4px; }
   .mp-btn {
-    width:18px; height:14px; border:1px solid var(--border); border-radius:3px;
-    background:var(--bg2); cursor:pointer; font-size:9px; line-height:1;
-    display:flex; align-items:center; justify-content:center; color:var(--text2);
+    width:18px; height:16px; border:1px solid var(--border);
+    border-radius:3px; background:var(--bg2); cursor:pointer;
+    font-size:10px; line-height:1; display:flex;
+    align-items:center; justify-content:center; color:var(--text2);
   }
   .mp-btn:hover { border-color:var(--accent); color:var(--accent); }
-  .mp-btn-merge { color:var(--yellow); border-color:var(--yellow); }
-  .mp-btn-merge:hover { background:rgba(176,125,0,0.08); }
-  .mp-btn-undo { color:var(--text3); }
-  .mp-btn-undo:hover { border-color:var(--accent); color:var(--accent); }
-  .mp-time { font-family:'Space Mono',monospace; font-size:9px; color:var(--accent); margin-bottom:2px; }
+  .mp-time { font-family:'Space Mono',monospace; font-size:9px; color:var(--accent); }
 </style>
 </head>
 <body>
@@ -467,6 +522,21 @@
 
 <div class="container">
   <aside class="sidebar">
+  <!-- Sidebar main tabs -->
+  <div class="sidebar-tabs">
+    <button class="sidebar-tab active" id="sideTabProcess" onclick="setSideTab('process')">⚙ 字幕处理</button>
+    <button class="sidebar-tab" id="sideTabBilingual" onclick="setSideTab('bilingual')">🔀 双语工具</button>
+  </div>
+
+  <!-- ═ Processing panel ═ -->
+  <div class="sidebar-panel" id="sidePanelProcess">
+
+    <!-- Action buttons at top -->
+    <div style="display:flex;flex-direction:column;gap:8px;">
+      <button class="btn btn-primary" id="btnProcess" disabled>▶ 开始处理</button>
+      <button class="btn btn-green"   id="btnDownload" disabled>↓ 下载 .srt 文件</button>
+      <button class="btn btn-outline" id="btnReset">✕ 重置</button>
+    </div>
 
     <div>
       <div class="section-title">上传字幕文件</div>
@@ -476,9 +546,6 @@
         <p>点击或拖放 .ass / .srt / .vtt 文件</p>
         <div class="filename" id="fileName">未选择文件</div>
       </div>
-      <button class="btn btn-outline" id="btnConvDownload" disabled
-        style="margin-top:6px;font-size:11px;display:none;"
-        title="不做任何清理，仅转换格式和时间轴">⚙ 直接转格式下载（不清理）</button>
     </div>
 
     <div>
@@ -532,7 +599,7 @@
         <span class="toggle-label">下载时 SRT 条目之间空两行</span>
         <label class="toggle"><input type="checkbox" id="opt_srt_blank2"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
-      <div class="edit-hint">默认关闭。开启后只影响主区「下载 .srt 文件」的输出格式，不改变清理、预览、ASS/VTT 转换、双语拆分等其他功能。</div>
+      <div class="edit-hint">默认关闭。开启后只影响主区“下载 .srt 文件”的输出格式，不改变清理、预览、ASS/VTT 转换、双语拆分等其他功能。</div>
     </div>
 
     <!-- Editable symbols -->
@@ -562,82 +629,79 @@
     </div>
 
 
+  </div>
 
-    <!-- Bilingual tools (split + merge combined) -->
-    <div>
-      <div class="section-title">双语工具</div>
-      <!-- sub-tab bar -->
-      <div style="display:flex;margin-bottom:10px;border:1px solid var(--border);border-radius:6px;overflow:hidden;">
-        <button id="biSubTabSplit" onclick="setBiSubTab('split')"
-          style="flex:1;padding:6px 4px;font-size:11px;border:none;background:var(--bg3);color:var(--text2);cursor:pointer;">拆分</button>
-        <button id="biSubTabMerge" onclick="setBiSubTab('merge')"
-          style="flex:1;padding:6px 4px;font-size:11px;border:none;background:var(--accent);color:#fff;cursor:pointer;border-left:1px solid var(--border);">合并</button>
-      </div>
+  <!-- ═ Bilingual panel ═ -->
+  <div class="sidebar-panel hidden" id="sidePanelBilingual">
 
-      <!-- split panel -->
-      <div id="biPanelSplit" style="display:none;">
-        <div class="edit-hint" style="margin-bottom:8px;">每条字幕含两行时，拆成两个 .srt 文件</div>
-        <div class="upload-zone" id="splitUploadZone" style="padding:14px 12px;">
-          <input type="file" id="splitFileInput" accept=".srt">
-          <span class="icon" style="font-size:20px;margin-bottom:4px;">🔀</span>
-          <p style="font-size:11px;">点击或拖放双语 .srt 文件</p>
-          <div class="filename" id="splitFileName">未选择文件</div>
+    <!-- MERGE card -->
+    <div class="bi-card">
+      <div class="bi-card-head">
+        <span class="bi-card-icon">🔗</span>
+        <div>
+          <div class="bi-card-title">双语合并</div>
+          <div class="bi-card-hint">时间轴以左侧为准，左上右下</div>
         </div>
-        <div style="display:flex;gap:6px;margin-top:8px;">
-          <button class="btn btn-outline" id="btnSplitLine1" disabled style="font-size:11px;padding:7px 8px;">↓ 第一行</button>
-          <button class="btn btn-outline" id="btnSplitLine2" disabled style="font-size:11px;padding:7px 8px;">↓ 第二行</button>
-        </div>
-        <div id="splitInfo" style="font-size:11px;color:var(--text3);margin-top:5px;font-family:'Space Mono',monospace;"></div>
       </div>
-
-      <!-- merge panel -->
-      <div id="biPanelMerge">
-        <div class="edit-hint" style="margin-bottom:8px;">左侧文字在上右侧文字在下，时间轴以左侧为准</div>
-        <div style="display:flex;gap:6px;margin-bottom:6px;">
-          <div class="upload-zone" id="mergeJpZone" style="padding:10px 8px;flex:1;">
-            <input type="file" id="mergeJpInput" accept=".srt">
-            <span style="font-size:16px;">📄</span>
-            <p style="font-size:10px;margin-top:2px;">左侧文件（时间轴）</p>
-            <div class="filename" id="mergeJpName" style="font-size:10px;">未选择</div>
-          </div>
-          <div class="upload-zone" id="mergeCnZone" style="padding:10px 8px;flex:1;">
-            <input type="file" id="mergeCnInput" accept=".srt">
-            <span style="font-size:16px;">📄</span>
-            <p style="font-size:10px;margin-top:2px;">右侧文件</p>
-            <div class="filename" id="mergeCnName" style="font-size:10px;">未选择</div>
-          </div>
+      <div class="bi-upload-row">
+        <div class="bi-upload-box" id="mergeJpZone">
+          <input type="file" id="mergeJpInput" accept=".srt">
+          <div class="bi-upload-label">左侧文件</div>
+          <div class="bi-upload-sub">时间轴主</div>
+          <div class="filename" id="mergeJpName">未选择</div>
         </div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;flex-wrap:wrap;">
-          <span style="font-size:11px;color:var(--text2);white-space:nowrap;">整体偏移</span>
-          <button onclick="adjustOffset(-1)" style="width:24px;height:24px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);cursor:pointer;font-size:14px;line-height:1;">-</button>
-          <span id="offsetDisplay" style="font-family:'Space Mono',monospace;font-size:12px;min-width:28px;text-align:center;">0</span>
-          <button onclick="adjustOffset(+1)" style="width:24px;height:24px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);cursor:pointer;font-size:14px;line-height:1;">+</button>
-          <button onclick="undoMerge()" title="撤回 (Ctrl+Z)" style="width:28px;height:24px;border:1px solid var(--border);border-radius:4px;background:var(--bg3);cursor:pointer;font-size:12px;line-height:1;margin-left:4px;">↩</button>
-          <span style="font-size:10px;color:var(--text3);">偏移 / 撤回</span>
+        <div class="bi-upload-sep">＋</div>
+        <div class="bi-upload-box" id="mergeCnZone">
+          <input type="file" id="mergeCnInput" accept=".srt">
+          <div class="bi-upload-label">右侧文件</div>
+          <div class="bi-upload-sub">叠加于下方</div>
+          <div class="filename" id="mergeCnName">未选择</div>
         </div>
-        <div id="mergeInfo" style="font-size:11px;color:var(--text3);margin-top:5px;font-family:'Space Mono',monospace;"></div>
-        <button class="btn btn-outline" id="btnMergeDownload" disabled style="margin-top:8px;font-size:12px;">↓ 下载双语合并 .srt</button>
       </div>
+      <div class="bi-offset-row">
+        <span class="bi-offset-label">整体偏移</span>
+        <button class="bi-offset-btn" onclick="adjustOffset(-1)">−</button>
+        <span id="offsetDisplay" class="bi-offset-val">0</span>
+        <button class="bi-offset-btn" onclick="adjustOffset(+1)">＋</button>
+        <button class="bi-offset-btn bi-undo-btn" onclick="undoMerge()" title="撤回 Ctrl+Z">↩</button>
+      </div>
+      <div id="mergeInfo" class="bi-info"></div>
+      <button class="btn btn-green" id="btnMergeDownload" disabled style="font-size:12px;">↓ 下载双语合并 .srt</button>
     </div>
 
-    <div style="display:flex;flex-direction:column;gap:8px;padding-bottom:8px;">
-      <button class="btn btn-primary" id="btnProcess" disabled>▶ 开始处理</button>
-      <button class="btn btn-green"   id="btnDownload" disabled>↓ 下载 .srt 文件</button>
-      <button class="btn btn-outline" id="btnReset">✕ 重置</button>
+    <!-- SPLIT card -->
+    <div class="bi-card">
+      <div class="bi-card-head">
+        <span class="bi-card-icon">✂️</span>
+        <div>
+          <div class="bi-card-title">双语拆分</div>
+          <div class="bi-card-hint">双行字幕拆成两个文件</div>
+        </div>
+      </div>
+      <div class="upload-zone" id="splitUploadZone" style="padding:12px;">
+        <input type="file" id="splitFileInput" accept=".srt">
+        <span class="icon" style="font-size:18px;margin-bottom:4px;">🔀</span>
+        <p style="font-size:11px;">点击或拖放双语 .srt 文件</p>
+        <div class="filename" id="splitFileName">未选择文件</div>
+      </div>
+      <div style="display:flex;gap:6px;margin-top:8px;">
+        <button class="btn btn-outline" id="btnSplitLine1" disabled style="font-size:11px;padding:7px 8px;">↓ 第一行</button>
+        <button class="btn btn-outline" id="btnSplitLine2" disabled style="font-size:11px;padding:7px 8px;">↓ 第二行</button>
+      </div>
+      <div id="splitInfo" class="bi-info"></div>
     </div>
 
-  </aside>
+  </div>
+
+</aside>
 
   <main class="main">
     <div class="preview-header">
       <div class="tab-bar">
         <div class="tab active" id="tabCompare" onclick="setTab('compare')">对比预览</div>
-        <div class="tab" id="tabOut" onclick="setTab('out')">处理结果</div>
-        <div class="tab" id="tabIn"  onclick="setTab('in')">原始内容</div>
         <div class="tab" id="tabBilingual" onclick="setTab('bilingual')">双语合并</div>
         <div class="tab" id="tabSplitPreview" onclick="setTab('splitPreview')">拆分预览</div>
       </div>
-      <div style="font-family:'Space Mono',monospace;font-size:10px;color:var(--text3);letter-spacing:0.08em;margin-left:14px;">✎ 点击右侧「处理结果」即可直接编辑文本</div>
       <div class="stats" id="statsBar" style="display:none">
         <div>原始 <span id="statIn">0</span> 条</div>
         <div>输出 <span id="statOut">0</span> 条</div>
@@ -671,16 +735,15 @@
       </div>
       <!-- split preview view -->
       <div id="splitPreviewView" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
-        <div style="display:flex;align-items:center;gap:0;border-bottom:1px solid var(--border);flex-shrink:0;">
-          <div style="padding:7px 16px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.15em;color:var(--text3);background:var(--bg3);flex:1;text-transform:uppercase;">拆分预览</div>
-          <div style="display:flex;gap:6px;padding:5px 12px;background:var(--bg3);">
+        <div style="display:flex;align-items:center;border-bottom:1px solid var(--border);flex-shrink:0;background:var(--bg3);">
+          <div style="padding:7px 16px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:0.15em;color:var(--text3);flex:1;text-transform:uppercase;">拆分预览</div>
+          <div style="display:flex;gap:6px;padding:5px 12px;">
             <button class="btn btn-outline" id="btnSplitLine1B" disabled style="font-size:11px;padding:5px 10px;">↓ 第一行</button>
             <button class="btn btn-outline" id="btnSplitLine2B" disabled style="font-size:11px;padding:5px 10px;">↓ 第二行</button>
           </div>
         </div>
         <div class="compare-scroll" id="splitPreviewScroll"></div>
       </div>
-
       <!-- bilingual merge view -->
       <div id="bilingualView" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
         <div class="col-headers" style="display:flex;align-items:center;padding:0;">
@@ -688,11 +751,9 @@
           <div class="col-header" style="flex:1;border-right:1px solid var(--border);">📄 左侧（时间轴）</div>
           <div class="col-header" style="flex:1;border-right:1px solid var(--border);color:var(--accent2);">📄 右侧</div>
           <div style="flex:0 0 52px;padding:4px 6px;display:flex;align-items:center;justify-content:center;">
-            <button onclick="undoMerge()" title="撤回上一步 (Ctrl+Z)"
+            <button onclick="undoMerge()" title="撤回 (Ctrl+Z)"
               style="font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:4px;
-                     background:var(--bg2);cursor:pointer;color:var(--text2);white-space:nowrap;">
-              ↩ 撤回
-            </button>
+                     background:var(--bg2);cursor:pointer;color:var(--text2);white-space:nowrap;">↩ 撤回</button>
           </div>
         </div>
         <div class="compare-scroll" id="bilingualScroll"></div>
@@ -721,48 +782,15 @@ function buildReplaceTable(rows) {
 function addReplaceRow(from='', to='') {
   const tbody = document.getElementById('replaceTableBody');
   const tr = document.createElement('tr');
-  const tdFrom = document.createElement('td');
-  const tdTo   = document.createElement('td');
-  const tdDel  = document.createElement('td');
-  const inFrom = document.createElement('input');
-  const inTo   = document.createElement('input');
-  const btnDel = document.createElement('button');
-  inFrom.type='text'; inFrom.value=from; inFrom.placeholder='原文';  inFrom.className='rep-from';
-  inTo.type  ='text'; inTo.value  =to;   inTo.placeholder  ='替换为'; inTo.className  ='rep-to';
-  btnDel.className='del-btn'; btnDel.title='删除'; btnDel.textContent='×';
-  btnDel.addEventListener('click',()=>{tr.remove(); saveReplacements();});
-  inFrom.addEventListener('input', saveReplacements);
-  inTo.addEventListener('input',   saveReplacements);
-  tdFrom.appendChild(inFrom); tdTo.appendChild(inTo); tdDel.appendChild(btnDel);
-  tr.appendChild(tdFrom); tr.appendChild(tdTo); tr.appendChild(tdDel);
+  tr.innerHTML = `
+    <td><input type="text" value="${escAttr(from)}" placeholder="原文" class="rep-from"></td>
+    <td><input type="text" value="${escAttr(to)}" placeholder="替换为" class="rep-to"></td>
+    <td><button class="del-btn" title="删除">×</button></td>`;
+  tr.querySelector('.del-btn').addEventListener('click', ()=>tr.remove());
   tbody.appendChild(tr);
 }
-document.getElementById('addReplaceRow').addEventListener('click', ()=>{addReplaceRow();saveReplacements();});
-
-function saveReplacements(){
-  try{
-    const rows=[];
-    document.querySelectorAll('#replaceTableBody tr').forEach(tr=>{
-      const f=tr.querySelector('.rep-from');
-      const t=tr.querySelector('.rep-to');
-      if(f&&t) rows.push([f.value,t.value]);
-    });
-    localStorage.setItem('subcleaner_replacements', JSON.stringify(rows));
-  }catch(e){}
-}
-
-function loadReplacements(){
-  try{
-    const saved=localStorage.getItem('subcleaner_replacements');
-    if(saved){
-      const rows=JSON.parse(saved);
-      if(rows && rows.length>0){ buildReplaceTable(rows); return; }
-    }
-  }catch(e){}
-  buildReplaceTable(defaultReplacements);
-}
-
-loadReplacements();
+document.getElementById('addReplaceRow').addEventListener('click', ()=>addReplaceRow());
+buildReplaceTable(defaultReplacements);
 
 function getReplacements() {
   const result={};
@@ -815,10 +843,6 @@ function handleFile(file){
   const ext=file.name.split('.').pop().toLowerCase();
   if(!['ass','srt','vtt'].includes(ext)){setLog('err','仅支持 .ass、.srt 和 .vtt 文件');return;}
   document.getElementById('fileName').textContent=file.name;
-  // Show direct-convert button for ASS/VTT only
-  const convBtn=document.getElementById('btnConvDownload');
-  if(ext==='ass'||ext==='vtt'){convBtn.style.display='';convBtn.disabled=false;}
-  else{convBtn.style.display='none';convBtn.disabled=true;}
   const reader=new FileReader();
   reader.onload=e=>{
     rawText=e.target.result;
@@ -1129,18 +1153,31 @@ function formatDigit(text){
   return text;
 }
 
-function buildSRT(blocks, blank2=false){
+function buildSRT(blocks){
   // CRLF for PR compatibility; skip empty blocks; renumber continuously
   let num=1;
   const parts=[];
   for(const b of blocks){
     const t=(b.text||'').trim();
     if(!t) continue;
-    parts.push(num+'\r\n'+b.start+' --> '+b.end+'\r\n'+t.replace(/\n/g,'\r\n')+'\r\n');
+    parts.push(`${num}\r\n${b.start} --> ${b.end}\r\n${t.replace(/\n/g,'\r\n')}\r\n`);
     num++;
   }
-  const sep=blank2?'\r\n\r\n':'\r\n';
-  return parts.join(sep);
+  return parts.join('\r\n');
+}
+
+function buildSRTWithExtraBlankLines(blocks){
+  // Optional export-only format: keep original processing untouched,
+  // but put TWO empty lines between SRT cues when downloading.
+  let num=1;
+  const parts=[];
+  for(const b of blocks){
+    const t=(b.text||'').trim();
+    if(!t) continue;
+    parts.push(`${num}\r\n${b.start} --> ${b.end}\r\n${t.replace(/\n/g,'\r\n')}`);
+    num++;
+  }
+  return parts.join('\r\n\r\n\r\n') + (parts.length ? '\r\n' : '');
 }
 
 // ── UI ────────────────────────────────────────────────────────────────────────
@@ -1165,8 +1202,10 @@ document.getElementById('btnProcess').addEventListener('click',()=>{
 
 document.getElementById('btnDownload').addEventListener('click',()=>{
   const fname=document.getElementById('fileName').textContent.replace(/\.[^.]+$/,'')+'_cleaned.srt';
-  const blank2=document.getElementById('opt_srt_blank2').checked;
-  outputSRT=buildSRT(outputBlocks, blank2);
+  // Rebuild SRT from current outputBlocks (reflects any edits made in preview)
+  // Extra blank-line format is an export-only option, so other features stay unchanged.
+  const useExtraBlankLines=document.getElementById('opt_srt_blank2')?.checked;
+  outputSRT=useExtraBlankLines ? buildSRTWithExtraBlankLines(outputBlocks) : buildSRT(outputBlocks);
   // encode as base64 data URI to avoid createObjectURL sandbox restrictions
   const bytes=new TextEncoder().encode(outputSRT);
   let binary='';
@@ -1193,12 +1232,13 @@ document.getElementById('btnReset').addEventListener('click',()=>{
 
 function setTab(tab){
   currentTab=tab;
-  ['compare','out','in','bilingual','splitPreview'].forEach(t=>{
+  ['compare','bilingual','splitPreview'].forEach(t=>{
     const el=document.getElementById('tab'+t[0].toUpperCase()+t.slice(1));
     if(el) el.classList.toggle('active',t===tab);
   });
   document.getElementById('bilingualView').style.display='none';
-  document.getElementById('splitPreviewView').style.display='none';
+  const spv=document.getElementById('splitPreviewView');
+  if(spv) spv.style.display='none';
   if(tab==='bilingual'){
     showBilingualView();
   } else if(tab==='splitPreview'){
@@ -1215,12 +1255,12 @@ function showEmptyState(){
   document.getElementById('panelIn').style.display='none';
   document.getElementById('panelOut').style.display='none';
   document.getElementById('bilingualView').style.display='none';
-  document.getElementById('splitPreviewView').style.display='none';
+  const spv=document.getElementById('splitPreviewView');
+  if(spv) spv.style.display='none';
 }
 
 function renderPanels(){
   document.getElementById('emptyState').style.display='none';
-  document.getElementById('bilingualView').style.display='none';
   if(currentTab==='compare'){
     document.getElementById('compareView').style.display='flex';
     document.getElementById('panelIn').style.display='none';
@@ -1315,21 +1355,190 @@ function setLog(type,msg){
 }
 
 // ── Pure ASS/VTT → SRT Converter ────────────────────────────────────────────
-// ── Bilingual sub-tab switcher ───────────────────────────────────────────────
-function setBiSubTab(tab){
-  const isSplit=tab==='split';
-  document.getElementById('biPanelSplit').style.display=isSplit?'':'none';
-  document.getElementById('biPanelMerge').style.display=isSplit?'none':'';
-  document.getElementById('biSubTabSplit').style.background=isSplit?'var(--accent)':'var(--bg3)';
-  document.getElementById('biSubTabSplit').style.color=isSplit?'#fff':'var(--text2)';
-  document.getElementById('biSubTabMerge').style.background=isSplit?'var(--bg3)':'var(--accent)';
-  document.getElementById('biSubTabMerge').style.color=isSplit?'var(--text2)':'#fff';
+let convBlocks=[], convFileNameBase='';
+
+function handleConvFile(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(!['ass','vtt'].includes(ext)){
+    const _ci=document.getElementById('convInfo');if(_ci)_ci.textContent='仅支持 .ass / .vtt 文件';return;
+  }
+  convFileNameBase=file.name.replace(/\.[^.]+$/,'');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const text=e.target.result;
+    // Parse without any cleaning — raw text preserved, only time format converted
+    if(ext==='ass'){
+      convBlocks=[];
+      let counter=1;
+      for(const line of text.split(/\r?\n/)){
+        if(!line.startsWith('Dialogue:')) continue;
+        const parts=line.slice('Dialogue:'.length).split(',');
+        if(parts.length<10) continue;
+        const rawText=parts.slice(9).join(',').trim()
+          .replace(/\\N/gi,'\n')   // \N → actual newline
+          .replace(/\\n/gi,'\n');  // \n → actual newline
+        convBlocks.push({
+          num:counter++,
+          start:assTimeToSRT(parts[1].trim()),
+          end:assTimeToSRT(parts[2].trim()),
+          text:rawText,
+        });
+      }
+    } else {
+      // VTT: use existing parser, preserve raw text
+      const parsed=parseVTT(text);
+      convBlocks=parsed.map((b,i)=>({...b,num:i+1}));
+    }
+    const _cfn=document.getElementById('convFileName');if(_cfn)_cfn.textContent=file.name;
+    const _ci2=document.getElementById('convInfo');if(_ci2)_ci2.textContent=`共 ${convBlocks.length} 条字幕`;
+    const _cb=document.getElementById('btnConvDownload');
+    if(_cb) _cb.disabled=false;
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+const _convBtn=document.getElementById('btnConvDownload');
+if(_convBtn) _convBtn.addEventListener('click',()=>{
+  const content=convBlocks.map((b,i)=>`${i+1}\n${b.start} --> ${b.end}\n${b.text}\n`).join('\n');
+  const fname=convFileNameBase+'_converted.srt';
+  const bytes=new TextEncoder().encode(content);
+  let binary='';bytes.forEach(b=>binary+=String.fromCharCode(b));
+  const b64=btoa(binary);
+  const a=document.createElement('a');
+  a.href='data:text/plain;charset=utf-8;base64,'+b64;
+  a.download=fname;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+});
+
+// ── Bilingual SRT Split ───────────────────────────────────────────────────────
+let splitBlocks=[], splitFileName='';
+
+// split zone handled by setupBiBox
+
+function handleSplitFile(file){
+  const ext=file.name.split('.').pop().toLowerCase();
+  if(ext!=='srt'){document.getElementById('splitInfo').textContent='仅支持 .srt 文件';return;}
+  splitFileName=file.name.replace(/\.srt$/i,'');
+  const reader=new FileReader();
+  reader.onload=e=>{
+    splitBlocks=parseSRT(e.target.result);
+    // count blocks with exactly 2 lines
+    const dual=splitBlocks.filter(b=>b.text.includes('\n')).length;
+    const total=splitBlocks.length;
+    document.getElementById('splitFileName').textContent=file.name;
+    document.getElementById('splitInfo').textContent=`共 ${total} 条，其中 ${dual} 条含双行`;
+    document.getElementById('btnSplitLine1').disabled=false;
+    document.getElementById('btnSplitLine2').disabled=false;
+  };
+  reader.readAsText(file,'utf-8');
+}
+
+function buildSplitSRT(blocks, lineIndex){
+  const out=[];
+  let num=1;
+  for(const b of blocks){
+    const lines=b.text.split('\n');
+    const picked=lines[lineIndex]!==undefined ? lines[lineIndex].trim() : lines[0].trim();
+    if(!picked) continue;
+    out.push(`${num}\n${b.start} --> ${b.end}\n${picked}\n`);
+    num++;
+  }
+  return out.join('\n');
+}
+
+function downloadSplit(lineIndex){
+  const suffix=lineIndex===0?'_line1':'_line2';
+  const content=buildSplitSRT(splitBlocks,lineIndex);
+  const fname=splitFileName+suffix+'.srt';
+  const bytes=new TextEncoder().encode(content);
+  let binary='';bytes.forEach(b=>binary+=String.fromCharCode(b));
+  const b64=btoa(binary);
+  const a=document.createElement('a');
+  a.href='data:text/plain;charset=utf-8;base64,'+b64;
+  a.download=fname;
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+}
+
+document.getElementById('btnSplitLine1').addEventListener('click',()=>downloadSplit(0));
+document.getElementById('btnSplitLine2').addEventListener('click',()=>downloadSplit(1));
+
+// ── Editable result text ────────────────────────────────────────────────────
+// Event delegation on the main content area. Handles input events on any
+// .srt-text.editable element and syncs back to outputBlocks[dataset.outIdx].
+function handleResultEdit(e){
+  const el = e.target.closest('.srt-text.editable');
+  if(!el) return;
+  const idx = parseInt(el.dataset.outIdx,10);
+  if(isNaN(idx) || !outputBlocks[idx]) return;
+  const newText = el.innerText.replace(/\r?\n/g,' ').trim();
+  const block = outputBlocks[idx];
+  if(newText === block.text) return;
+  block.text = newText;
+  block._edited = true;
+  // visual marker
+  el.classList.add('edited');
+  // rebuild SRT for stats/download consistency
+  outputSRT = buildSRT(outputBlocks);
+  setLog('ok','已修改第 '+block.num+' 条字幕（下载时会保存你的修改）');
+}
+
+// Convert Enter to a linebreak-free edit: prevent adding newlines / HTML.
+function handleResultKey(e){
+  const el = e.target.closest('.srt-text.editable');
+  if(!el) return;
+  if(e.key==='Enter' && !e.shiftKey){
+    e.preventDefault();
+    el.blur();
+  }
+}
+
+// Strip HTML on paste to keep it plain text.
+function handleResultPaste(e){
+  const el = e.target.closest('.srt-text.editable');
+  if(!el) return;
+  e.preventDefault();
+  const text = (e.clipboardData||window.clipboardData).getData('text');
+  document.execCommand('insertText', false, text);
+}
+
+document.getElementById('btnSplitLine1').addEventListener('click',()=>downloadSplit(0));
+document.getElementById('btnSplitLine2').addEventListener('click',()=>downloadSplit(1));
+document.getElementById('btnSplitLine1B').addEventListener('click',()=>downloadSplit(0));
+document.getElementById('btnSplitLine2B').addEventListener('click',()=>downloadSplit(1));
+
+const _previewPanels = document.getElementById('previewPanels');
+_previewPanels.addEventListener('input', handleResultEdit);
+_previewPanels.addEventListener('keydown', handleResultKey);
+_previewPanels.addEventListener('paste', handleResultPaste);
+
+// ── Sidebar tab switcher ─────────────────────────────────────────────────────
+function setSideTab(tab){
+  const isProc = tab==='process';
+  document.getElementById('sidePanelProcess').classList.toggle('hidden',!isProc);
+  document.getElementById('sidePanelBilingual').classList.toggle('hidden',isProc);
+  document.getElementById('sideTabProcess').classList.toggle('active',isProc);
+  document.getElementById('sideTabBilingual').classList.toggle('active',!isProc);
+  if(!isProc && currentTab==='compare') setTab('bilingual');
+  if(isProc && currentTab!=='compare') setTab('compare');
+}
+
+// ── Bilingual upload boxes ────────────────────────────────────────────────────
+function setupBiBox(zoneId, inputId, onFile){
+  const zone=document.getElementById(zoneId);
+  const input=document.getElementById(inputId);
+  if(!zone||!input) return;
+  zone.addEventListener('click',()=>input.click());
+  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over');});
+  zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
+  zone.addEventListener('drop',e=>{e.preventDefault();zone.classList.remove('drag-over');if(e.dataTransfer.files[0])onFile(e.dataTransfer.files[0]);});
+  input.addEventListener('change',()=>{if(input.files[0])onFile(input.files[0]);});
 }
 
 // ── Bilingual Merge Tool ──────────────────────────────────────────────────────
 let mergeJpBlocks=[], mergeCnBlocks=[], mergeOffset=0, mergeRowAdj={};
+// mergeRowAdj: {jpIndex: cnAdjustment} per-row local offset adjustments
 
-function setupMergeZone(zoneId,inputId,nameId,onLoad){
+function setupMergeZone(zoneId, inputId, nameId, onLoad){
   const zone=document.getElementById(zoneId);
   const input=document.getElementById(inputId);
   zone.addEventListener('click',()=>input.click());
@@ -1355,85 +1564,139 @@ function loadMergeFile(file,nameId,onLoad){
   reader.readAsText(file,'utf-8');
 }
 
-setupMergeZone('mergeJpZone','mergeJpInput','mergeJpName',b=>{mergeJpBlocks=b;mergeRowAdj={};});
-setupMergeZone('mergeCnZone','mergeCnInput','mergeCnName',b=>{mergeCnBlocks=b;mergeRowAdj={};});
+setupBiBox('mergeJpZone','mergeJpInput',file=>{
+  const r=new FileReader();r.onload=e=>{
+    mergeJpBlocks=parseSRT(e.target.result);mergeRowAdj={};
+    document.getElementById('mergeJpName').textContent=file.name;
+    renderMergePreview();};r.readAsText(file,'utf-8');
+});
+setupBiBox('mergeCnZone','mergeCnInput',file=>{
+  const r=new FileReader();r.onload=e=>{
+    mergeCnBlocks=parseSRT(e.target.result);mergeRowAdj={};
+    document.getElementById('mergeCnName').textContent=file.name;
+    renderMergePreview();};r.readAsText(file,'utf-8');
+});
+setupBiBox('splitUploadZone','splitFileInput',handleSplitFile);
 
 function adjustOffset(delta){
   pushUndo();
   mergeOffset+=delta;
   mergeRowAdj={};
-  document.getElementById('offsetDisplay').textContent=mergeOffset;
+  const od=document.getElementById('offsetDisplay');
+  if(od) od.textContent=mergeOffset;
   renderMergePreview();
 }
 
-function adjustRow(jpIdx,delta){
+function adjustRow(jpIdx, delta){
   pushUndo();
   mergeRowAdj[jpIdx]=(mergeRowAdj[jpIdx]||0)+delta;
   renderMergePreview();
 }
 
 function getCnForJp(jpIdx){
+  // cn index = jpIdx + globalOffset + perRowAdj
+  // perRowAdj accumulates: sum of all adjustments for rows 0..jpIdx
   let localAdj=0;
   for(let k=0;k<=jpIdx;k++) localAdj+=(mergeRowAdj[k]||0);
-  return jpIdx+mergeOffset+localAdj;
+  return jpIdx + mergeOffset + localAdj;
 }
 
-function saveMergeEdit(el){
-  const idx=parseInt(el.dataset.idx);
-  const type=el.dataset.type;
-  const val=el.innerText.trim();
-  if(type==='jp' && mergeJpBlocks[idx]) mergeJpBlocks[idx].text=val;
-  if(type==='cn'){
-    const ci=getCnForJp(idx);
-    if(ci>=0&&ci<mergeCnBlocks.length) mergeCnBlocks[ci].text=val;
-    else if(val){
-      // user typed into an empty cn cell — create a placeholder block
-      while(mergeCnBlocks.length<=ci) mergeCnBlocks.push({num:mergeCnBlocks.length+1,start:'00:00:00,000',end:'00:00:00,000',text:'',style:'default'});
-      mergeCnBlocks[ci].text=val;
-    }
+function showBilingualView(){
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('compareView').style.display='none';
+  document.getElementById('panelIn').style.display='none';
+  document.getElementById('panelOut').style.display='none';
+  const spv=document.getElementById('splitPreviewView');
+  if(spv) spv.style.display='none';
+  document.getElementById('bilingualView').style.display='flex';
+  if(!mergeJpBlocks.length&&!mergeCnBlocks.length){
+    document.getElementById('bilingualScroll').innerHTML=
+      '<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">请上传两个 SRT 文件</div>';
   }
 }
 
-// ── Undo stack ──
+function showSplitPreview(){
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('compareView').style.display='none';
+  document.getElementById('panelIn').style.display='none';
+  document.getElementById('panelOut').style.display='none';
+  document.getElementById('bilingualView').style.display='none';
+  const spv=document.getElementById('splitPreviewView');
+  if(!spv) return;
+  spv.style.display='flex';
+  if(!splitBlocks.length){
+    document.getElementById('splitPreviewScroll').innerHTML=
+      '<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">请上传双语 .srt 文件</div>';
+    return;
+  }
+  const rows=splitBlocks.map((b,i)=>{
+    const lines=b.text.split('\n');
+    const l1=lines[0]||''; const l2=lines[1]||'';
+    return `<div class="cmp-row">
+      <div class="cmp-cell"><div class="srt-num">${b.num}</div><div class="srt-time">${b.start} → ${b.end}</div>
+        <div class="srt-text mp-edit" contenteditable="true" data-split-idx="${i}" data-split-line="0" onblur="saveSplitEdit(this)">${escHtml(l1)}</div></div>
+      <div class="cmp-cell"><div class="srt-num">${b.num}</div><div class="srt-time">${b.start} → ${b.end}</div>
+        <div class="srt-text changed mp-edit" contenteditable="true" data-split-idx="${i}" data-split-line="1" onblur="saveSplitEdit(this)">${escHtml(l2)}</div></div>
+    </div>`;
+  }).join('');
+  document.getElementById('splitPreviewScroll').innerHTML=rows;
+}
+
+function saveSplitEdit(el){
+  const idx=parseInt(el.dataset.splitIdx);
+  const line=parseInt(el.dataset.splitLine);
+  const val=el.innerText.trim();
+  if(!splitBlocks[idx]) return;
+  const lines=splitBlocks[idx].text.split('\n');
+  lines[line]=val; splitBlocks[idx].text=lines.join('\n');
+}
+
+// ── Undo stack ──────────────────────────────────────────────────────────────
 const mergeUndoStack=[];
 function pushUndo(){
   mergeUndoStack.push({
-    jp: mergeJpBlocks.map(b=>({...b})),
-    cn: mergeCnBlocks.map(b=>({...b})),
-    offset: mergeOffset,
-    adj: {...mergeRowAdj},
+    jp:mergeJpBlocks.map(b=>({...b})),
+    cn:mergeCnBlocks.map(b=>({...b})),
+    offset:mergeOffset,
+    adj:{...mergeRowAdj},
   });
   if(mergeUndoStack.length>50) mergeUndoStack.shift();
 }
 function undoMerge(){
   if(!mergeUndoStack.length) return;
   const s=mergeUndoStack.pop();
-  mergeJpBlocks=s.jp;
-  mergeCnBlocks=s.cn;
-  mergeOffset=s.offset;
-  mergeRowAdj=s.adj;
-  document.getElementById('offsetDisplay').textContent=mergeOffset;
+  mergeJpBlocks=s.jp; mergeCnBlocks=s.cn;
+  mergeOffset=s.offset; mergeRowAdj=s.adj;
+  const od=document.getElementById('offsetDisplay');
+  if(od) od.textContent=mergeOffset;
   renderMergePreview();
 }
 document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key==='z'){
-    // only fire if bilingual tab is active
-    if(currentTab==='bilingual'){e.preventDefault();undoMerge();}
+  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&currentTab==='bilingual'){
+    e.preventDefault();undoMerge();
   }
 });
+
+function saveMergeEdit(el){
+  const idx=parseInt(el.dataset.idx);
+  const type=el.dataset.type;
+  const val=el.innerText.trim();
+  if(type==='jp'&&mergeJpBlocks[idx]) mergeJpBlocks[idx].text=val;
+  if(type==='cn'){
+    const ci=getCnForJp(idx);
+    if(ci>=0&&ci<mergeCnBlocks.length) mergeCnBlocks[ci].text=val;
+  }
+}
 
 function mergeUpRow(i){
   if(i<=0) return;
   pushUndo();
-  // Merge jp text only — keep prev row's time unchanged
   const jpCur=mergeJpBlocks[i];
   const jpPrev=mergeJpBlocks[i-1];
   if(jpCur&&jpPrev){
     jpPrev.text=(jpPrev.text+' '+jpCur.text).trim();
-    // time stays as jpPrev.start/end — no change
     mergeJpBlocks.splice(i,1);
   }
-  // Merge cn text — keep prev cn time unchanged
   const ciCur=getCnForJp(i);
   const ciPrev=getCnForJp(i-1);
   const cnCur=(ciCur>=0&&ciCur<mergeCnBlocks.length)?mergeCnBlocks[ciCur]:null;
@@ -1448,22 +1711,14 @@ function mergeUpRow(i){
 
 function renderMergePreview(){
   const info=document.getElementById('mergeInfo');
-  const scroller=document.getElementById('bilingualScroll');
-  if(!mergeJpBlocks.length&&!mergeCnBlocks.length) return;
-
-  // Switch to bilingual tab + merge sub-tab automatically when both files loaded
-  if(mergeJpBlocks.length&&mergeCnBlocks.length){
-    setBiSubTab('merge');
-    setTab('bilingual');
-  }
+  if(!mergeJpBlocks.length && !mergeCnBlocks.length) return;
 
   const rows=mergeJpBlocks.map((jp,i)=>{
     const ci=getCnForJp(i);
-    const cn=(ci>=0&&ci<mergeCnBlocks.length)?mergeCnBlocks[ci]:null;
-    const cnText=cn?cn.text:'';
+    const cn=(ci>=0 && ci<mergeCnBlocks.length)?mergeCnBlocks[ci]:null;
+    const cnText=cn?cn.text:'—';
     const cnClass=cn?'mp-cn':'mp-cn empty';
-    const mergeUpBtn=i>0?`<button class="mp-btn mp-btn-merge" onclick="mergeUpRow(${i})" title="合并到上一行">⥣</button>`:'<span style="width:18px;display:inline-block;"></span>';
-    return `<div class="mp-row" id="mprow-${i}">
+    return `<div class="mp-row">
       <div class="mp-idx">${i+1}</div>
       <div class="mp-jp">
         <div class="mp-time">${jp.start.slice(0,8)}</div>
@@ -1473,30 +1728,20 @@ function renderMergePreview(){
         <div class="mp-edit" contenteditable="true" data-type="cn" data-idx="${i}" onblur="saveMergeEdit(this)">${escHtml(cnText)}</div>
       </div>
       <div class="mp-btns">
-        ${mergeUpBtn}
-        <button class="mp-btn" onclick="adjustRow(${i},+1)" title="中文上移一条">↑</button>
-        <button class="mp-btn" onclick="adjustRow(${i},-1)" title="中文下移一条">↓</button>
-        <button class="mp-btn mp-btn-undo" onclick="undoMerge()" title="撤回上一步">↩</button>
+        ${i>0?`<button class="mp-btn mp-btn-merge" onclick="mergeUpRow(${i})" title="合并到上一行">⥣</button>`:'<span style="display:inline-block;width:18px;"></span>'}
+        <button class="mp-btn" onclick="adjustRow(${i},+1)" title="中文下移一条">↑</button>
+        <button class="mp-btn" onclick="adjustRow(${i},-1)" title="中文上移一条">↓</button>
+        <button class="mp-btn mp-btn-undo" onclick="undoMerge()" title="撤回">↩</button>
       </div>
     </div>`;
   }).join('');
-  scroller.innerHTML=rows;
+
+  const scroller=document.getElementById('bilingualScroll');
+  if(scroller) scroller.innerHTML=rows;
 
   const matched=mergeJpBlocks.filter((_,i)=>{const ci=getCnForJp(i);return ci>=0&&ci<mergeCnBlocks.length;}).length;
-  info.textContent=`左侧 ${mergeJpBlocks.length} 条，右侧 ${mergeCnBlocks.length} 条，匹配 ${matched} 条`;
+  info.textContent=`日文 ${mergeJpBlocks.length} 条，中文 ${mergeCnBlocks.length} 条，匹配 ${matched} 条`;
   document.getElementById('btnMergeDownload').disabled=!(mergeJpBlocks.length>0);
-}
-
-function showBilingualView(){
-  document.getElementById('emptyState').style.display='none';
-  document.getElementById('compareView').style.display='none';
-  document.getElementById('panelIn').style.display='none';
-  document.getElementById('panelOut').style.display='none';
-  document.getElementById('bilingualView').style.display='flex';
-  if(!mergeJpBlocks.length&&!mergeCnBlocks.length){
-    document.getElementById('bilingualScroll').innerHTML=
-      '<div style="padding:40px;text-align:center;color:var(--text3);font-size:13px;">请在左侧上传两个 SRT 文件</div>';
-  }
 }
 
 document.getElementById('btnMergeDownload').addEventListener('click',()=>{
@@ -1507,8 +1752,7 @@ document.getElementById('btnMergeDownload').addEventListener('click',()=>{
     const jp=mergeJpBlocks[i];
     const ci=getCnForJp(i);
     const cn=(ci>=0&&ci<mergeCnBlocks.length)?mergeCnBlocks[ci]:null;
-    // 中文在上，日文在下
-    const text=cn?(cn.text+'\r\n'+jp.text):jp.text;
+    const text=cn?(jp.text+'\r\n'+cn.text):jp.text;
     parts.push(num+'\r\n'+jp.start+' --> '+jp.end+'\r\n'+text+'\r\n');
     num++;
   }
