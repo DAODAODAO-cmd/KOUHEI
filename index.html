@@ -164,7 +164,7 @@
     position: relative;
   }
   .tool-title .period::after {
-    content: "↑ 我劝你不要连续点";
+    content: "❌ 我劝你不要连续点";
     position: absolute;
     bottom: calc(100% + 10px);
     left: 50%;
@@ -269,6 +269,17 @@
   }
   .cta:active { transform: translateY(0); }
   .cta .arrow { font-size: 18px; line-height: 1; }
+  .mascot-col .cta {
+    display: flex;
+    width: 100%;
+    justify-content: center;
+    margin-top: 18px;
+    font-size: 18px;
+    padding: 20px 36px;
+    border-radius: 10px;
+    letter-spacing: 0.02em;
+  }
+  .mascot-col .cta .arrow { font-size: 22px; }
 
   /* MASCOT (right side) */
   .mascot-col {
@@ -307,20 +318,6 @@
     cursor: pointer;
     user-select: none; -webkit-user-drag: none;
     transform-origin: 50% 90%;
-  }
-  .mascot-img:hover {
-    animation: mascot-bounce 0.9s ease-in-out infinite;
-    filter: drop-shadow(0 8px 16px rgba(74,107,142,0.18));
-  }
-  .mascot-img:active {
-    animation: none;
-    transform: scale(0.96) rotate(-1deg);
-  }
-  @keyframes mascot-bounce {
-    0%, 100% { transform: translateY(0) rotate(-2deg) scale(1.03); }
-    25%      { transform: translateY(-6px) rotate(2deg) scale(1.05); }
-    50%      { transform: translateY(-2px) rotate(-1deg) scale(1.04); }
-    75%      { transform: translateY(-7px) rotate(3deg) scale(1.05); }
   }
   /* one-shot wiggle when card hovered */
   .mascot-card:hover .mascot-meta .dot {
@@ -377,7 +374,7 @@
     object-fit: contain;
     object-position: center;
     display: block;
-    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s;
     cursor: pointer;
     user-select: none; -webkit-user-drag: none;
     transform-origin: 50% 90%;
@@ -390,6 +387,10 @@
   .mascot-card.flipped .mascot-default { opacity: 0; pointer-events: none; }
   .mascot-card.flipped .mascot-alt     { opacity: 1; transform: scale(1); }
   .mascot-default:hover {
+    animation: mascot-bounce 0.9s ease-in-out infinite;
+    filter: drop-shadow(0 8px 16px rgba(74,107,142,0.18));
+  }
+  .mascot-card:not(.flipped) .mascot-default:hover {
     animation: mascot-bounce 0.9s ease-in-out infinite;
     filter: drop-shadow(0 8px 16px rgba(74,107,142,0.18));
   }
@@ -561,12 +562,6 @@
         把人留给校对。
       </div>
 
-      <div class="cta-row">
-        <a class="cta" href="subtitle-tool.html">
-          进去干活
-          <span class="arrow">→</span>
-        </a>
-      </div>
     </div>
 
     <aside class="mascot-col">
@@ -587,6 +582,10 @@
           <span>KOUHEI · SUB</span>
         </div>
       </div>
+      <a class="cta" href="subtitle-tool.html" style="margin-top:18px;display:flex;width:100%;justify-content:center;font-size:18px;padding:20px 36px;border-radius:10px;letter-spacing:0.02em;box-sizing:border-box;">
+        进去干活
+        <span class="arrow" style="font-size:22px;">→</span>
+      </a>
     </aside>
   </div>
 </section>
@@ -602,13 +601,18 @@
 <script>
 (() => {
   const TAGS = [
-    '你好，我是 Kibi · 武田航平爱犬',
+    '你好，我是 Kibi · 字幕组吉祥物',
     '汪？',
     '又被你找到了',
     '熬夜做轴会被我看见的',
     '今日宿題：一行も飛ばさないこと',
-    '别忘了吃饭',
     'お疲れ様です',
+    '字幕组没有魔法，但有工具',
+    '你负责校对，我负责装可爱',
+    'Kibi 正在努力假装很专业',
+    'おかしいな…这行怎么又回来了',
+    '今日も修羅場ですね',
+    '今日の目標：字幕を生かすこと',
     '帮你看一眼下载文件夹...',
   ];
   // tagIdx 全局递增，每次出现不同句子
