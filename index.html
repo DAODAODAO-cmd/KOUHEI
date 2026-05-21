@@ -2,128 +2,674 @@
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
-<title>字幕清理工具</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
+<title>恶役字幕组 · 字幕清理器</title>
 <style>
-body {
-  margin: 0;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  background: #f7f7f8;
-  color: #1a1a1a;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100vh;
-  text-align: center;
-}
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;0,9..144,800;1,9..144,400;1,9..144,600;1,9..144,700&family=JetBrains+Mono:wght@400;500;600;700&family=Noto+Sans+SC:wght@300;400;500;600;700&family=Noto+Serif+SC:wght@400;600;700&display=swap');
 
-/* 卡片 */
-.container {
-  background: #ffffff;
-  padding: 44px 30px;
-  border-radius: 14px;
-  box-shadow: 0 10px 35px rgba(0,0,0,0.08);
-  width: 90%;
-  max-width: 420px;
+  :root {
+    --canvas:    #f3f1eb;
+    --paper:     #ffffff;
+    --paper-2:   #faf9f4;
+    --sunken:    #ecebe4;
+    --line:      #e2dfd2;
+    --line-soft: #edebe1;
+    --line-strong: #c9c4b3;
 
-  opacity: 0;
-  transform: translateY(10px);
-  animation: fadeIn 0.8s ease forwards;
-}
+    --ink:       #15131a;
+    --ink-2:     #4a4659;
+    --ink-3:     #8a8499;
+    --ink-4:     #b8b2c2;
 
-/* LOGO */
-.logo {
-  width: 140px;
-  margin-bottom: 16px;
-  opacity: 0;
-  transform: translateY(8px);
-  animation: fadeIn 1s ease forwards;
-  animation-delay: 0.2s;
-}
+    --accent:        #4a6b8e;
+    --accent-2:      #6a8fb8;
+    --accent-deep:   #2e4a6b;
+    --accent-tint:   rgba(74,107,142,0.08);
+    --accent-tint-2: rgba(74,107,142,0.18);
+    --accent-glow:   rgba(74,107,142,0.25);
 
-/* 标题 */
-h1 {
-  font-size: 20px;
-  margin-bottom: 6px;
-  font-weight: 600;
-}
-
-/* 副标题 */
-p {
-  color: #666;
-  margin-bottom: 18px;
-  font-size: 13px;
-}
-
-/* 标语 */
-.slogan {
-  font-size: 12px;
-  color: #888;
-  margin-bottom: 26px;
-  font-style: italic;
-  letter-spacing: 0.5px;
-}
-
-/* 按钮 */
-.button {
-  padding: 10px 22px;
-  background: #6355d4;
-  color: white;
-  text-decoration: none;
-  border-radius: 8px;
-  transition: 0.2s;
-  font-size: 14px;
-  display: inline-block;
-}
-
-.button:hover {
-  background: #7b6ae0;
-  transform: translateY(-1px);
-}
-
-/* 底部 */
-.footer {
-  position: absolute;
-  bottom: 18px;
-  font-size: 12px;
-  color: #999;
-}
-
-/* 动画 */
-@keyframes fadeIn {
-  to {
-    opacity: 1;
-    transform: translateY(0);
+    --serif: 'Fraunces', 'Noto Serif SC', ui-serif, Georgia, serif;
+    --serif-cn: 'Noto Serif SC', 'Songti SC', SimSun, serif;
+    --sans:  'Inter', -apple-system, 'PingFang SC', 'Noto Sans SC', BlinkMacSystemFont, sans-serif;
+    --mono:  'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
   }
-}
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; }
+
+  body {
+    font-family: var(--sans);
+    color: var(--ink);
+    background: var(--canvas);
+    min-height: 100vh;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+  }
+
+  /* ════════ TOP STRIP ════════ */
+  .topstrip {
+    padding: 16px 40px;
+    background: var(--paper);
+    border-bottom: 1px solid var(--line);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 24px;
+  }
+  .top-mark {
+    display: flex; align-items: center; gap: 10px;
+    font-family: var(--mono);
+    font-size: 10.5px;
+    color: var(--ink-3);
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .top-mascot {
+    width: 34px; height: 34px;
+    object-fit: contain;
+    user-select: none; -webkit-user-drag: none;
+    cursor: pointer;
+    transition: transform 0.25s;
+  }
+  .top-mascot:hover { transform: scale(1.08) rotate(-3deg); }
+  .top-meta {
+    font-family: var(--mono);
+    font-size: 10px;
+    color: var(--ink-3);
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    display: flex; align-items: center; gap: 14px;
+    font-weight: 500;
+  }
+  .top-meta .pulse {
+    display: inline-flex; align-items: center; gap: 7px;
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .top-meta .pulse::before {
+    content: ""; width: 6px; height: 6px;
+    border-radius: 50%; background: var(--accent);
+    box-shadow: 0 0 0 0 var(--accent-glow);
+    animation: pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { box-shadow: 0 0 0 0 var(--accent-glow); }
+    50%      { box-shadow: 0 0 0 5px transparent; }
+  }
+  .top-meta .sep { color: var(--ink-4); }
+
+  /* ════════ HERO ════════ */
+  .hero {
+    position: relative;
+    padding: 60px 60px 100px;
+    max-width: 1400px;
+    margin: 0 auto;
+  }
+  .hero-grid {
+    display: grid;
+    grid-template-columns: 1fr 380px;
+    gap: 80px;
+    align-items: start;
+  }
+
+  /* MASTHEAD — the big stacked title block */
+  .masthead-title {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin-bottom: 56px;
+  }
+  .wordmark-img {
+    width: 100%;
+    max-width: 680px;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    user-select: none;
+    -webkit-user-drag: none;
+    /* the cover.png is pure black on transparent — keep as is */
+  }
+  .tool-title {
+    font-family: var(--serif);
+    font-weight: 700;
+    font-size: clamp(70px, 9.5vw, 132px);
+    line-height: 0.9;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    font-variation-settings: "opsz" 144;
+    margin-top: -8px;
+    display: flex;
+    align-items: baseline;
+  }
+  .tool-title .period {
+    display: inline-block;
+    width: 0.13em; height: 0.13em;
+    background: var(--ink);
+    border-radius: 50%;
+    margin-left: 0.06em;
+    transform: translateY(-0.04em);
+    cursor: pointer;
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+    flex-shrink: 0;
+  }
+  .tool-title .period:hover {
+    transform: translateY(-0.04em) scale(1.18);
+    background: var(--accent);
+    box-shadow: 0 0 0 0.06em var(--accent-tint);
+  }
+
+  /* COPY BLOCK */
+  .lead {
+    font-family: var(--serif-cn);
+    font-size: 24px;
+    line-height: 1.6;
+    color: var(--ink);
+    max-width: 640px;
+    font-weight: 600;
+    margin-bottom: 18px;
+    letter-spacing: -0.005em;
+  }
+  .sub-line {
+    font-family: var(--serif);
+    font-style: italic;
+    font-size: 22px;
+    font-weight: 500;
+    color: var(--accent);
+    margin-bottom: 28px;
+    letter-spacing: -0.005em;
+    font-variation-settings: "opsz" 36;
+  }
+  .deck {
+    font-family: var(--serif-cn);
+    font-size: 18px;
+    line-height: 1.95;
+    color: var(--ink-2);
+    max-width: 580px;
+    font-weight: 400;
+    margin-bottom: 44px;
+  }
+  .deck .em {
+    color: var(--accent);
+    font-weight: 600;
+  }
+
+  .cta-row {
+    display: flex; align-items: center; gap: 18px;
+    flex-wrap: wrap;
+  }
+  .cta {
+    display: inline-flex; align-items: center; gap: 12px;
+    background: var(--accent);
+    color: var(--paper);
+    padding: 17px 34px;
+    border-radius: 8px;
+    font-family: var(--sans);
+    font-size: 15.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    text-decoration: none;
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.20) inset,
+      0 2px 4px rgba(46,74,107,0.35),
+      0 10px 24px -4px rgba(74,107,142,0.40);
+    transition: transform 0.2s, box-shadow 0.2s, background 0.2s;
+  }
+  .cta:hover {
+    background: var(--accent-2);
+    transform: translateY(-2px);
+    box-shadow:
+      0 1px 0 rgba(255,255,255,0.22) inset,
+      0 4px 8px rgba(46,74,107,0.40),
+      0 16px 32px -4px rgba(74,107,142,0.50);
+  }
+  .cta:active { transform: translateY(0); }
+  .cta .arrow { font-size: 18px; line-height: 1; }
+
+  /* MASCOT (right side) */
+  .mascot-col {
+    position: relative;
+    padding-top: 8px;
+  }
+  .mascot-card {
+    position: relative;
+    background: var(--paper);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px 24px 22px;
+    box-shadow:
+      0 1px 0 rgba(20,18,28,0.04),
+      0 6px 16px rgba(20,18,28,0.06),
+      0 24px 48px -16px rgba(20,18,28,0.12);
+  }
+  .mascot-card::before {
+    content: "MASCOT · 字幕组吉祥物";
+    position: absolute;
+    top: -9px; left: 24px;
+    background: var(--paper);
+    color: var(--accent);
+    font-family: var(--mono);
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    padding: 0 8px;
+  }
+  .mascot-img {
+    width: 100%;
+    height: auto;
+    object-fit: contain;
+    display: block;
+    transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
+    cursor: pointer;
+    user-select: none; -webkit-user-drag: none;
+    transform-origin: 50% 90%;
+  }
+  .mascot-img:hover {
+    animation: mascot-bounce 0.9s ease-in-out infinite;
+    filter: drop-shadow(0 8px 16px rgba(74,107,142,0.18));
+  }
+  .mascot-img:active {
+    animation: none;
+    transform: scale(0.96) rotate(-1deg);
+  }
+  @keyframes mascot-bounce {
+    0%, 100% { transform: translateY(0) rotate(-2deg) scale(1.03); }
+    25%      { transform: translateY(-6px) rotate(2deg) scale(1.05); }
+    50%      { transform: translateY(-2px) rotate(-1deg) scale(1.04); }
+    75%      { transform: translateY(-7px) rotate(3deg) scale(1.05); }
+  }
+  /* one-shot wiggle when card hovered */
+  .mascot-card:hover .mascot-meta .dot {
+    animation: wag-dot 1.2s ease-in-out infinite;
+  }
+  @keyframes wag-dot {
+    0%, 100% { transform: translateX(0); }
+    50%      { transform: translateX(4px); }
+  }
+  .mascot-caption {
+    margin-top: 14px;
+    padding-top: 16px;
+    border-top: 1px solid var(--line-soft);
+    font-family: var(--serif-cn);
+    font-size: 14.5px;
+    color: var(--ink-2);
+    line-height: 1.7;
+    font-weight: 400;
+  }
+  .mascot-caption strong {
+    font-family: var(--serif);
+    font-style: italic;
+    font-weight: 600;
+    color: var(--accent);
+    font-size: 16px;
+  }
+  .mascot-meta {
+    margin-top: 12px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--mono);
+    font-size: 9.5px;
+    letter-spacing: 0.18em;
+    color: var(--ink-3);
+    text-transform: uppercase;
+    font-weight: 600;
+  }
+  .mascot-meta .dot { color: var(--accent); }
+
+
+  /* ════════ MASCOT swap + popup ════════ */
+  .mascot-img-wrap {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 3 / 2;
+    overflow: hidden;
+    border-radius: 10px;
+    background: var(--paper-2);
+  }
+  .mascot-img {
+    position: absolute; inset: 0;
+    width: 100%; height: 100%;
+    object-fit: contain;
+    object-position: center;
+    display: block;
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
+    cursor: pointer;
+    user-select: none; -webkit-user-drag: none;
+    transform-origin: 50% 90%;
+  }
+  .mascot-alt {
+    object-fit: cover;
+    opacity: 0;
+    transform: scale(1.08);
+  }
+  .mascot-card.flipped .mascot-default { opacity: 0; pointer-events: none; }
+  .mascot-card.flipped .mascot-alt     { opacity: 1; transform: scale(1); }
+  .mascot-default:hover {
+    animation: mascot-bounce 0.9s ease-in-out infinite;
+    filter: drop-shadow(0 8px 16px rgba(74,107,142,0.18));
+  }
+  .mascot-alt:hover {
+    transform: scale(1.04);
+  }
+  @keyframes mascot-bounce {
+    0%, 100% { transform: translateY(0) rotate(-2deg) scale(1.03); }
+    25%      { transform: translateY(-6px) rotate(2deg) scale(1.05); }
+    50%      { transform: translateY(-2px) rotate(-1deg) scale(1.04); }
+    75%      { transform: translateY(-7px) rotate(3deg) scale(1.05); }
+  }
+  .mascot-popup {
+    display: none;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    margin-top: 18px;
+    padding: 14px 16px;
+    background: var(--paper-2);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    font-family: var(--serif-cn);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--ink);
+    line-height: 1;
+    position: relative;
+    animation: popup-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .mascot-popup::before {
+    content: ""; position: absolute;
+    top: -7px; left: 50%;
+    margin-left: -8px;
+    width: 14px; height: 14px;
+    background: var(--paper-2);
+    border-left: 1px solid var(--line);
+    border-top: 1px solid var(--line);
+    transform: rotate(45deg);
+  }
+  .mascot-card.flipped .mascot-popup { display: flex; }
+  .mascot-popup .eyaku-img {
+    height: 30px; width: auto;
+    object-fit: contain;
+    transform: translateY(-2px) rotate(-2deg);
+    filter: drop-shadow(0 2px 0 rgba(0,0,0,0.05));
+  }
+  .mascot-popup .pop-paw {
+    font-size: 16px;
+    transform: translateY(-1px) rotate(-12deg);
+    margin-left: 2px;
+  }
+  @keyframes popup-in {
+    0%   { opacity: 0; transform: translateY(-6px) scale(0.92); }
+    100% { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .paw-trigger {
+    cursor: pointer;
+    font-size: 13px !important;
+    transition: transform 0.2s;
+    line-height: 1;
+  }
+  .paw-trigger:hover { transform: rotate(-12deg) scale(1.2); }
+
+  /* hide old caption-related rules harmlessly */
+  .mascot-caption { display: none; }
+
+  /* ════════ KIBI ════════ */
+  #kibi-portal {
+    position: fixed; inset: 0;
+    pointer-events: none; z-index: 9999; overflow: hidden;
+  }
+  #kibi-portal .kibi {
+    position: absolute;
+    bottom: 30px; right: 40px;
+    width: 220px; height: 220px;
+    pointer-events: auto;
+    cursor: pointer;
+    transform: translateY(280px) rotate(-10deg);
+    transition: transform 0.8s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.4s;
+    opacity: 0;
+    filter: drop-shadow(0 14px 32px rgba(20,18,28,0.28));
+  }
+  #kibi-portal .kibi.in {
+    transform: translateY(0) rotate(-4deg);
+    opacity: 1;
+    animation: kibi-float 4s ease-in-out infinite 0.9s;
+  }
+  #kibi-portal .kibi img {
+    width: 100%; height: 100%; object-fit: contain;
+    user-select: none; -webkit-user-drag: none;
+  }
+  #kibi-portal .kibi-tag {
+    position: absolute;
+    bottom: 240px; right: 50px;
+    background: var(--ink);
+    color: var(--paper);
+    font-family: var(--sans);
+    font-size: 13.5px;
+    font-weight: 500;
+    padding: 10px 16px;
+    border-radius: 18px;
+    white-space: nowrap;
+    box-shadow: 0 4px 14px rgba(20,18,28,0.30);
+    opacity: 0;
+    transform: translateY(8px);
+    transition: all 0.4s 0.7s;
+    pointer-events: none;
+  }
+  #kibi-portal .kibi-tag.in { opacity: 1; transform: translateY(0); }
+  #kibi-portal .kibi-tag::after {
+    content: ""; position: absolute;
+    bottom: -7px; right: 36px;
+    width: 0; height: 0;
+    border: 7px solid transparent;
+    border-top-color: var(--ink);
+    border-bottom: 0;
+  }
+  @keyframes kibi-float {
+    0%, 100% { transform: translateY(0) rotate(-4deg); }
+    50%      { transform: translateY(-8px) rotate(-1deg); }
+  }
+
+  /* Responsive */
+  @media (max-width: 1100px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 50px; }
+    .mascot-col { max-width: 460px; }
+  }
+  @media (max-width: 720px) {
+    .topstrip, .hero { padding-left: 22px; padding-right: 22px; }
+    .hero { padding-top: 36px; padding-bottom: 60px; }
+    .tool-title { font-size: clamp(48px, 14vw, 84px); }
+    .lead { font-size: 18px; }
+    .sub-line { font-size: 17px; }
+    .deck { font-size: 15.5px; line-height: 1.85; }
+    .mascot-card { padding: 22px 18px 18px; }
+  }
 </style>
 </head>
-
 <body>
 
-<div class="container">
-
-  <!-- LOGO -->
-  <img src="./LOGO.png" class="logo">
-
-  <h1>恶役字幕组字幕清理器</h1>
-
-  <p>把乱七八糟的字幕，整理成能看的样子。</p>
-
-  <!-- 标语 -->
-  <div class="slogan">
-    能自动的，就别手动了。
+<div class="topstrip">
+  <div class="top-mark">
+    <img class="top-mascot" src="assets/LOGO.png" alt="" id="topMascot">
+    <span>恶役字幕組&nbsp;·&nbsp;KOUHEI&nbsp;SUB</span>
   </div>
-
-  <a class="button" href="./tool.html">进入工具</a>
-
+  <div class="top-meta">
+    <span class="pulse">字幕组自用</span>
+    <span class="sep">/</span>
+    <span>V·2026</span>
+  </div>
 </div>
 
-<div class="footer">
-  Subtitle Cleaner Tool
+<section class="hero">
+  <div class="hero-grid">
+    <div class="hero-main">
+      <div class="masthead-title">
+        <img class="wordmark-img" src="assets/cover.png" alt="恶役字幕组" id="wordmark">
+        <h1 class="tool-title">
+          <span>字幕清理器</span><span class="period" id="periodEgg" title="..."></span>
+        </h1>
+      </div>
+
+      <div class="lead">乱七八糟的字幕，总得有人收拾。</div>
+      <div class="sub-line">不是不能手动，只是没必要。</div>
+      <div class="deck">
+        <span class="em">清理、合并、替换、整理。</span><br>
+        把烦人的小问题交给工具，<br>
+        把人留给校对。
+      </div>
+
+      <div class="cta-row">
+        <a class="cta" href="subtitle-tool.html">
+          进去干活
+          <span class="arrow">→</span>
+        </a>
+      </div>
+    </div>
+
+    <aside class="mascot-col">
+      <div class="mascot-card" id="mascotCard">
+        <div class="mascot-img-wrap">
+          <img class="mascot-img mascot-default" src="assets/LOGO.png" alt="KOUHEI" id="mascotImg">
+          <img class="mascot-img mascot-alt"     src="assets/sub.jpg" alt="恶役" id="mascotImgAlt">
+        </div>
+        <div class="mascot-popup" id="mascotPopup">
+          <span class="pop-text">今天</span>
+          <img class="eyaku-img" src="assets/eyaku.png" alt="恶役">
+          <span class="pop-text">了嘛</span>
+          <span class="pop-paw">🐾</span>
+        </div>
+        <div class="mascot-meta">
+          <span>恶役字幕組</span>
+          <span class="dot paw-trigger" id="pawTrigger" title="...">🐾</span>
+          <span>KOUHEI · SUB</span>
+        </div>
+      </div>
+    </aside>
+  </div>
+</section>
+
+<!-- ───────── KIBI 隐藏彩蛋 ───────── -->
+<div id="kibi-portal" aria-hidden="true">
+  <div class="kibi-tag" id="kibiTag">你好，我是 Kibi · 字幕组吉祥物</div>
+  <div class="kibi" id="kibiSticker" title="再点我走开">
+    <img src="assets/Kibi.png" alt="Kibi">
+  </div>
 </div>
 
+<script>
+(() => {
+  const TAGS = [
+    '你好，我是 Kibi · 字幕组吉祥物',
+    '汪？',
+    '又被你找到了',
+    '熬夜做轴会被我看见的',
+    '今日宿題：一行も飛ばさないこと',
+    '别忘了吃饭',
+    'お疲れ様です',
+    '帮你看一眼下载文件夹...',
+  ];
+  let tagIdx = 0;
+  const sticker = document.getElementById('kibiSticker');
+  const tag = document.getElementById('kibiTag');
+  const period = document.getElementById('periodEgg');
+  const wordmark = document.getElementById('wordmark');
+  const mascot = document.getElementById('mascotImg');
+  const topMascot = document.getElementById('topMascot');
+  let shown = false;
+  let hideTimer = null;
+  let periodTaps = [];
+  let mascotTaps = [];
+
+  function showKibi(msg) {
+    if (shown) {
+      tagIdx = (tagIdx + 1) % TAGS.length;
+      tag.textContent = msg || TAGS[tagIdx];
+      clearTimeout(hideTimer);
+      hideTimer = setTimeout(hideKibi, 8000);
+      return;
+    }
+    shown = true;
+    tag.textContent = msg || TAGS[tagIdx];
+    sticker.classList.add('in');
+    tag.classList.add('in');
+    document.body.animate(
+      [{ transform: 'translate(0,0)' }, { transform: 'translate(-2px,1px)' }, { transform: 'translate(2px,-1px)' }, { transform: 'translate(0,0)' }],
+      { duration: 240, iterations: 1 }
+    );
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(hideKibi, 10000);
+  }
+  function hideKibi() {
+    if (!shown) return;
+    shown = false;
+    sticker.classList.remove('in');
+    tag.classList.remove('in');
+    clearTimeout(hideTimer);
+  }
+
+  // Trigger 1: click red period 3 times in 4s
+  if (period) {
+    period.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const now = Date.now();
+      periodTaps.push(now);
+      while (periodTaps.length && now - periodTaps[0] > 4000) periodTaps.shift();
+      if (periodTaps.length >= 3) { periodTaps.length = 0; showKibi('你按到我了'); }
+    });
+  }
+
+  // Trigger 2: click mascot card image → swap LOGO ↔ photo + show popup
+  const mascotCard = document.getElementById('mascotCard');
+  function swapMascot() {
+    if (!mascotCard) return;
+    mascotCard.classList.toggle('flipped');
+  }
+  if (mascot) mascot.addEventListener('click', swapMascot);
+  const mascotAlt = document.getElementById('mascotImgAlt');
+  if (mascotAlt) mascotAlt.addEventListener('click', swapMascot);
+
+  // Trigger 3: top mascot — 5 taps in 3s → Kibi
+  if (topMascot) {
+    topMascot.addEventListener('click', () => {
+      const now = Date.now();
+      mascotTaps.push(now);
+      while (mascotTaps.length && now - mascotTaps[0] > 3000) mascotTaps.shift();
+      if (mascotTaps.length >= 5) { mascotTaps.length = 0; showKibi(); }
+    });
+  }
+
+  // Trigger 5: small paw print in mascot meta → Kibi
+  const pawTrigger = document.getElementById('pawTrigger');
+  if (pawTrigger) {
+    pawTrigger.addEventListener('click', (e) => {
+      e.stopPropagation();
+      tagIdx = (tagIdx + 1) % TAGS.length;
+      showKibi();
+    });
+  }
+
+  // Trigger 4: type K-I-B-I
+  const seq = ['k','i','b','i'];
+  let pos = 0;
+  document.addEventListener('keydown', (e) => {
+    if (e.target.matches && e.target.matches('input, textarea, [contenteditable]')) return;
+    const key = e.key.toLowerCase();
+    if (key === seq[pos]) {
+      pos++;
+      if (pos === seq.length) { pos = 0; showKibi('你召唤了我'); }
+    } else {
+      pos = (key === seq[0]) ? 1 : 0;
+    }
+  });
+
+  sticker.addEventListener('click', () => {
+    sticker.animate(
+      [{ transform: 'translateY(0) rotate(-4deg)' }, { transform: 'translateY(-30px) rotate(6deg)' }, { transform: 'translateY(320px) rotate(24deg)', opacity: 0 }],
+      { duration: 600, easing: 'cubic-bezier(0.55, 0, 0.7, 0.2)' }
+    ).onfinish = hideKibi;
+  });
+})();
+</script>
 </body>
 </html>
