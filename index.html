@@ -298,7 +298,7 @@
       0 24px 48px -16px rgba(20,18,28,0.12);
   }
   .mascot-card::before {
-    content: "MASCOT · 字幕组吉祥物";
+    content: "KIBIKORO · 字幕组吉祥物";
     position: absolute;
     top: -9px; left: 24px;
     background: var(--paper);
@@ -364,7 +364,7 @@
     object-fit: contain;
     object-position: center;
     display: block;
-    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.4s;
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1), filter 0.4s;
     cursor: pointer;
     user-select: none; -webkit-user-drag: none;
     transform-origin: 50% 90%;
@@ -373,24 +373,50 @@
     object-fit: cover;
     opacity: 0;
     transform: scale(1.08);
+    will-change: opacity, transform;
   }
-  .mascot-card.flipped .mascot-default { opacity: 0; pointer-events: none; }
+  .mascot-card.flipped .mascot-default { opacity: 0; pointer-events: none; animation: none !important; transform: none !important; }
   .mascot-card.flipped .mascot-alt     { opacity: 1; transform: scale(1); }
-  .mascot-default:hover {
-    animation: mascot-bounce 0.9s ease-in-out infinite;
-    filter: drop-shadow(0 8px 16px rgba(74,107,142,0.18));
+  /* 翻转后卡片整体停止抖动 */
+  .mascot-card.flipped .mascot-img-wrap { animation: none; }
+
+  /* 持续弹跳：默认就跑，不依赖 hover */
+  .mascot-default {
+    animation: mascot-idle 2.8s ease-in-out infinite;
+    filter: drop-shadow(0 6px 18px rgba(74,107,142,0.22)) drop-shadow(0 2px 6px rgba(74,107,142,0.12));
   }
-  .mascot-alt:hover {
-    transform: scale(1.04);
+  .mascot-default:active {
+    animation: none !important;
+    transform: scale(0.93) rotate(1deg) !important;
+    transition: transform 0.1s ease !important;
+    filter: drop-shadow(0 2px 6px rgba(74,107,142,0.15)) !important;
   }
-  @keyframes mascot-bounce {
-    0%, 100% { transform: translateY(0) rotate(-2deg) scale(1.03); }
-    25%      { transform: translateY(-6px) rotate(2deg) scale(1.05); }
-    50%      { transform: translateY(-2px) rotate(-1deg) scale(1.04); }
-    75%      { transform: translateY(-7px) rotate(3deg) scale(1.05); }
+  .mascot-alt:hover { transform: scale(1.04); }
+
+  /* 圆点摆动同步 */
+  .mascot-meta .dot {
+    display: inline-block;
+    animation: dot-wag 2.8s ease-in-out infinite;
+  }
+  @keyframes dot-wag {
+    0%,100% { transform: rotate(0deg) scale(1); }
+    20%     { transform: rotate(-18deg) scale(1.15); }
+    40%     { transform: rotate(12deg) scale(1.1); }
+    60%     { transform: rotate(-10deg) scale(1.12); }
+    80%     { transform: rotate(8deg) scale(1.08); }
+  }
+
+  @keyframes mascot-idle {
+    0%   { transform: translateY(0px)   rotate(-1.5deg) scale(1);    }
+    15%  { transform: translateY(-7px)  rotate(1deg)    scale(1.02); }
+    30%  { transform: translateY(-3px)  rotate(-0.5deg) scale(1.01); }
+    45%  { transform: translateY(-8px)  rotate(1.8deg)  scale(1.03); }
+    60%  { transform: translateY(-2px)  rotate(-1deg)   scale(1.01); }
+    75%  { transform: translateY(-6px)  rotate(1.2deg)  scale(1.02); }
+    100% { transform: translateY(0px)   rotate(-1.5deg) scale(1);    }
   }
   .mascot-popup {
-    display: none;
+    display: flex;
     align-items: center;
     justify-content: center;
     gap: 8px;
@@ -405,7 +431,12 @@
     color: var(--ink);
     line-height: 1;
     position: relative;
-    animation: popup-in 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+    /* hidden by default, animates in when shown */
+    opacity: 0;
+    transform: translateY(-10px) scale(0.88);
+    pointer-events: none;
+    transition: opacity 0.38s cubic-bezier(0.34, 1.56, 0.64, 1),
+                transform 0.38s cubic-bezier(0.34, 1.56, 0.64, 1);
   }
   .mascot-popup::before {
     content: ""; position: absolute;
@@ -417,7 +448,11 @@
     border-top: 1px solid var(--line);
     transform: rotate(45deg);
   }
-  .mascot-card.flipped .mascot-popup { display: flex; }
+  .mascot-card.flipped .mascot-popup {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+    pointer-events: auto;
+  }
   .mascot-popup .eyaku-img {
     height: 30px; width: auto;
     object-fit: contain;
@@ -526,7 +561,7 @@
   <div class="top-meta">
     <span class="pulse">字幕组自用</span>
     <span class="sep">/</span>
-    <span>BOD·19860114</span>
+    <span>V·2026</span>
   </div>
 </div>
 
@@ -578,7 +613,7 @@
 
 <!-- ───────── KIBI 隐藏彩蛋 ───────── -->
 <div id="kibi-portal" aria-hidden="true">
-  <div class="kibi-tag" id="kibiTag">你好，我是 Kibi · 字幕组吉祥物</div>
+  <div class="kibi-tag" id="kibiTag">我是 Kibi · 武田航平爱犬</div>
   <div class="kibi" id="kibiSticker" title="再点我走开">
     <img src="Kibi.png" alt="Kibi">
   </div>
@@ -587,19 +622,18 @@
 <script>
 (() => {
   const TAGS = [
-    '你好，我是 Kibi · 武田航平爱犬',
+    '我是 Kibi · 武田航平爱犬',
     '汪？',
     '又被你找到了',
     '熬夜做轴会被我看见的',
     '今日宿題：一行も飛ばさないこと',
     'お疲れ様です',
-    '字幕组没有魔法，但有工具',
-    '你负责校对，我负责装可爱',
+    '字幕组没有魔法 但有工具',
+    '你负责校对 我负责装可爱',
     'Kibi 正在努力假装很专业',
     'おかしいな…这行怎么又回来了',
     '今日も修羅場ですね',
     '今日の目標：字幕を生かすこと',
-    '帮你看一眼下载文件夹...',
   ];
   // tagIdx 全局递增，每次出现不同句子
   let tagIdx = -1;
