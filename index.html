@@ -607,9 +607,9 @@
         点击开工
         <span class="arrow" style="font-size:22px;">→</span>
       </a>
-      <a href="Pomedex_Game.html" target="_blank" style="margin-top:10px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:700;padding:14px 20px;border-radius:10px;letter-spacing:0.04em;box-sizing:border-box;background:#fdf6ed;border:2.5px solid #c4a882;color:#2d1f0e;cursor:pointer;font-family:inherit;box-shadow:3px 3px 0 #e8d5b0;transition:all .15s;text-decoration:none;" onmouseover="this.style.transform='translate(-1px,-1px)';this.style.boxShadow='4px 4px 0 #e8d5b0'" onmouseout="this.style.transform='';this.style.boxShadow='3px 3px 0 #e8d5b0'">
+      <button onclick="openPomedex()" style="margin-top:10px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:700;padding:14px 20px;border-radius:10px;letter-spacing:0.04em;box-sizing:border-box;background:#fdf6ed;border:2.5px solid #c4a882;color:#2d1f0e;cursor:pointer;font-family:inherit;box-shadow:3px 3px 0 #e8d5b0;transition:all .15s;text-decoration:none;" onmouseover="this.style.transform='translate(-1px,-1px)';this.style.boxShadow='4px 4px 0 #e8d5b0'" onmouseout="this.style.transform='';this.style.boxShadow='3px 3px 0 #e8d5b0'">
         <span style="font-size:18px">🐾</span> きびところ
-      </a>
+      </button>
     </aside>
   </div>
 </section>
@@ -752,6 +752,74 @@
 </script>
 
 
+
+
+<!-- ───────── POMEDEX MODAL ───────── -->
+<div id="pomedex-modal" style="
+  display:none;
+  position:fixed;inset:0;z-index:9000;
+  background:rgba(0,0,0,0.65);
+  backdrop-filter:blur(4px);
+  -webkit-backdrop-filter:blur(4px);
+  align-items:center;justify-content:center;
+" onclick="if(event.target===this)closePomedex()">
+  <div style="
+    position:relative;
+    width:min(960px,95vw);
+    height:min(680px,90vh);
+    background:#f0e0bc;
+    border-radius:18px;
+    box-shadow:0 24px 80px rgba(0,0,0,0.45);
+    overflow:hidden;
+    display:flex;flex-direction:column;
+  ">
+    <div style="
+      display:flex;align-items:center;justify-content:space-between;
+      padding:10px 16px;
+      background:#e8c890;
+      border-bottom:2px solid #c4a060;
+      flex-shrink:0;
+    ">
+      <span style="font-size:14px;font-weight:700;color:#2d1f0e;letter-spacing:0.06em;">🐾 ポメポケモン — きびところ</span>
+      <button onclick="closePomedex()" style="
+        background:none;border:none;cursor:pointer;
+        font-size:20px;line-height:1;color:#5b3e1a;padding:2px 6px;border-radius:6px;
+        transition:background .15s;
+      " onmouseover="this.style.background='rgba(0,0,0,0.1)'" onmouseout="this.style.background='none'" title="关闭">✕</button>
+    </div>
+    <iframe
+      id="pomedex-frame"
+      src=""
+      style="flex:1;width:100%;border:none;display:block;"
+      allow="autoplay"
+    ></iframe>
+  </div>
+</div>
+
+<script>
+(function() {
+  var GAME_FILE = 'pomedex.html';
+
+  window.openPomedex = function() {
+    var modal = document.getElementById('pomedex-modal');
+    var frame = document.getElementById('pomedex-frame');
+    if (!frame.src || frame.src === window.location.href) {
+      frame.src = GAME_FILE;
+    }
+    modal.style.display = 'flex';
+    document.body.style.overflow = 'hidden';
+  };
+
+  window.closePomedex = function() {
+    document.getElementById('pomedex-modal').style.display = 'none';
+    document.body.style.overflow = '';
+  };
+
+  document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') closePomedex();
+  });
+})();
+<\/script>
 
 </body>
 </html>
