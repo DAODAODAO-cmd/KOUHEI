@@ -607,9 +607,9 @@
         点击开工
         <span class="arrow" style="font-size:22px;">→</span>
       </a>
-      <button onclick="openGame()" style="margin-top:10px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:700;padding:14px 20px;border-radius:10px;letter-spacing:0.04em;box-sizing:border-box;background:#fdf6ed;border:2.5px solid #c4a882;color:#2d1f0e;cursor:pointer;font-family:inherit;box-shadow:3px 3px 0 #e8d5b0;transition:all .15s;" onmouseover="this.style.transform='translate(-1px,-1px)';this.style.boxShadow='4px 4px 0 #e8d5b0'" onmouseout="this.style.transform='';this.style.boxShadow='3px 3px 0 #e8d5b0'">
+      <a href="Pomedex_Game.html" target="_blank" style="margin-top:10px;width:100%;display:flex;align-items:center;justify-content:center;gap:10px;font-size:15px;font-weight:700;padding:14px 20px;border-radius:10px;letter-spacing:0.04em;box-sizing:border-box;background:#fdf6ed;border:2.5px solid #c4a882;color:#2d1f0e;cursor:pointer;font-family:inherit;box-shadow:3px 3px 0 #e8d5b0;transition:all .15s;text-decoration:none;" onmouseover="this.style.transform='translate(-1px,-1px)';this.style.boxShadow='4px 4px 0 #e8d5b0'" onmouseout="this.style.transform='';this.style.boxShadow='3px 3px 0 #e8d5b0'">
         <span style="font-size:18px">🐾</span> きびところ
-      </button>
+      </a>
     </aside>
   </div>
 </section>
@@ -751,86 +751,7 @@
 })();
 </script>
 
-<!-- ───────── GAME MODAL ───────── -->
-<style>
-#gm-overlay {
-  position: fixed; inset: 0; z-index: 2000;
-  background: rgba(45,31,14,.5);
-  backdrop-filter: blur(5px);
-  display: flex; align-items: center; justify-content: center;
-  padding: 16px;
-  opacity: 0; pointer-events: none;
-  transition: opacity .3s;
-}
-#gm-overlay.open { opacity: 1; pointer-events: all; }
-#gm-box {
-  background: #fdf6ed;
-  border-radius: 20px;
-  border: 2.5px solid #c4a882;
-  box-shadow: 8px 8px 0 #e8d5b0, 0 24px 60px rgba(0,0,0,.28);
-  width: 100%; max-width: 980px;
-  height: 90vh;
-  display: flex; flex-direction: column;
-  transform: scale(.9) translateY(28px);
-  transition: transform .35s cubic-bezier(.34,1.56,.64,1);
-  overflow: hidden;
-}
-#gm-overlay.open #gm-box { transform: scale(1) translateY(0); }
-.gm-bar {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 11px 16px;
-  background: #fdf6ed;
-  border-bottom: 2px solid #e8d5b0;
-  flex-shrink: 0;
-}
-.gm-title {
-  font-weight: 700; font-size: 13px; color: #8b5e3c;
-  letter-spacing: .08em; display: flex; align-items: center; gap: 7px;
-}
-.gm-close {
-  width: 30px; height: 30px; border-radius: 50%;
-  background: #2d1f0e; color: #fff; border: none;
-  font-size: 14px; cursor: pointer; line-height: 1;
-  transition: transform .15s;
-}
-.gm-close:hover { transform: scale(1.1) rotate(90deg); }
-#gm-frame {
-  flex: 1; border: none; width: 100%;
-  /* iframe stays alive — only visibility toggled */
-}
-</style>
 
-<div id="gm-overlay" onclick="gmBgClose(event)">
-  <div id="gm-box">
-    <div class="gm-bar">
-      <div class="gm-title">🐾 ポメポケモン育てゲー — きびところ</div>
-      <button class="gm-close" onclick="closeGame()" title="閉じる">✕</button>
-    </div>
-    <iframe id="gm-frame" src="Pomedex_Game.html" title="ポメポケモン育てゲー" allowfullscreen></iframe>
-  </div>
-</div>
-
-<script>
-let gameLoaded = false;
-function openGame() {
-  const frame = document.getElementById('gm-frame');
-  // Load only once — keeps state across open/close
-  if (!gameLoaded) {
-    frame.src = 'Pomedex_Game.html';
-    gameLoaded = true;
-  }
-  document.getElementById('gm-overlay').classList.add('open');
-  document.body.style.overflow = 'hidden';
-}
-function closeGame() {
-  document.getElementById('gm-overlay').classList.remove('open');
-  document.body.style.overflow = '';
-}
-function gmBgClose(e) {
-  if (e.target === document.getElementById('gm-overlay')) closeGame();
-}
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closeGame(); });
-</script>
 
 </body>
 </html>
