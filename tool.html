@@ -1407,8 +1407,17 @@ function handleConvFile(file){
 
 const _convBtn=document.getElementById('btnConvDownload');
 if(_convBtn) _convBtn.addEventListener('click',()=>{
-  const content=convBlocks.map((b,i)=>`${i+1}\n${b.start} --> ${b.end}\n${b.text}\n`).join('\n');
-  const fname=convFileNameBase+'_converted.srt';
+  if(!parsedBlocks.length) return;
+  // Raw conversion: no cleaning, just format + time conversion
+  let num=1; const parts=[];
+  for(const b of parsedBlocks){
+    const t=(b.text||'').replace(/\\N/gi,'\r\n').replace(/\n/g,'\r\n').trim();
+    if(!t) continue;
+    parts.push(num+'\r\n'+b.start+' --> '+b.end+'\r\n'+t+'\r\n');
+    num++;
+  }
+  const content=parts.join('\r\n');
+  const fname=document.getElementById('fileName').textContent.replace(/\.[^.]+$/,'')+'_converted.srt';
   const bytes=new TextEncoder().encode(content);
   let binary='';bytes.forEach(b=>binary+=String.fromCharCode(b));
   const b64=btoa(binary);
