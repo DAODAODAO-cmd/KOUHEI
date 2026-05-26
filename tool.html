@@ -669,11 +669,6 @@
         <button class="bi-offset-btn bi-undo-btn" onclick="undoMerge()" title="撤回 Ctrl+Z">↩</button>
       </div>
       <div id="mergeInfo" class="bi-info"></div>
-      <div style="display:flex;gap:6px;margin-top:0;">
-        <button class="btn btn-outline" id="btnSaveProgress" style="font-size:11px;flex:1;" title="保存当前对齐进度为 JSON 文件">💾 保存进度</button>
-        <button class="btn btn-outline" id="btnLoadProgress" style="font-size:11px;flex:1;" title="导入之前保存的进度文件">📂 导入进度</button>
-        <input type="file" id="progressFileInput" accept=".json" style="display:none;">
-      </div>
       <button class="btn btn-green" id="btnMergeDownload" disabled style="font-size:12px;">↓ 下载双语合并 .srt</button>
     </div>
 
@@ -1966,71 +1961,6 @@ if(_resetBtn){
 // ----------------------------------------
 // restoreAll called at end of script
 
-// ----------------------------------------
-document.getElementById('btnSaveProgress').addEventListener('click',()=>{
-  if(!mergeJpBlocks.length) return;
-  const data={
-    version:1,
-    jpBlocks: mergeJpBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text})),
-    cnBlocks: mergeCnBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text})),
-    offset:   mergeOffset,
-    rowAdj:   mergeRowAdj,
-    jpName:   document.getElementById('mergeJpName').textContent,
-    cnName:   document.getElementById('mergeCnName').textContent,
-  };
-  const json=JSON.stringify(data,null,2);
-  const bytes=new TextEncoder().encode(json);
-  let binary=''; bytes.forEach(b=>binary+=String.fromCharCode(b));
-  const b64=btoa(binary);
-  const a=document.createElement('a');
-  a.href='data:application/json;base64,'+b64;
-  const jpName=document.getElementById('mergeJpName').textContent.replace(/\.[^.]+$/,'').replace(/未选择/,'merge');
-  a.download=jpName+'_progress.json';
-  document.body.appendChild(a);a.click();document.body.removeChild(a);
-});
-
-document.getElementById('btnLoadProgress').addEventListener('click',()=>{
-  document.getElementById('progressFileInput').click();
-});
-
-document.getElementById('progressFileInput').addEventListener('change',function(){
-  const file=this.files[0];
-  if(!file) return;
-  const reader=new FileReader();
-  reader.onload=e=>{
-    try{
-      const data=JSON.parse(e.target.result);
-      if(!data.jpBlocks||!data.jpBlocks.length){
-        alert('无效的进度文件');return;
-      }
-      mergeJpBlocks=data.jpBlocks;
-      mergeCnBlocks=data.cnBlocks||[];
-      mergeOffset=data.offset||0;
-      mergeRowAdj=data.rowAdj||{};
-      const od=document.getElementById('offsetDisplay');
-      if(od) od.textContent=mergeOffset;
-      document.getElementById('mergeJpName').textContent=data.jpName||'已恢复';
-      document.getElementById('mergeCnName').textContent=data.cnName||'已恢复';
-      document.getElementById('btnMergeDownload').disabled=false;
-      setSideTab('bilingual');
-      setTab('bilingual');
-      renderMergePreview();
-      setLog('ok','进度已恢复：'+file.name);
-    }catch(err){
-      alert('读取进度文件失败：'+err.message);
-    }
-  };
-  reader.readAsText(file,'utf-8');
-  this.value='';
-});
-
-
-// Restore all saved state after all functions defined
-(function restoreAll(){
-  try{ loadSettings(); }catch(e){}
-  try{ loadFileState(); }catch(e){}
-  try{ loadMergeState(); }catch(e){}
-})();
 </script>
 </body>
 </html>
