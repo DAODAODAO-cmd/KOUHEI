@@ -789,7 +789,9 @@ function addReplaceRow(from='', to='') {
     <td><input type="text" value="${escAttr(from)}" placeholder="原文" class="rep-from"></td>
     <td><input type="text" value="${escAttr(to)}" placeholder="替换为" class="rep-to"></td>
     <td><button class="del-btn" title="删除">×</button></td>`;
-  tr.querySelector('.del-btn').addEventListener('click', ()=>tr.remove());
+  tr.querySelector('.del-btn').addEventListener('click', ()=>{tr.remove(); saveReplacements();});
+  tr.querySelector('.rep-from').addEventListener('input', saveReplacements);
+  tr.querySelector('.rep-to').addEventListener('input',   saveReplacements);
   tbody.appendChild(tr);
 }
 document.getElementById('addReplaceRow').addEventListener('click', ()=>addReplaceRow());
@@ -1407,17 +1409,8 @@ function handleConvFile(file){
 
 const _convBtn=document.getElementById('btnConvDownload');
 if(_convBtn) _convBtn.addEventListener('click',()=>{
-  if(!parsedBlocks.length) return;
-  // Raw conversion: no cleaning, just format + time conversion
-  let num=1; const parts=[];
-  for(const b of parsedBlocks){
-    const t=(b.text||'').replace(/\\N/gi,'\r\n').replace(/\n/g,'\r\n').trim();
-    if(!t) continue;
-    parts.push(num+'\r\n'+b.start+' --> '+b.end+'\r\n'+t+'\r\n');
-    num++;
-  }
-  const content=parts.join('\r\n');
-  const fname=document.getElementById('fileName').textContent.replace(/\.[^.]+$/,'')+'_converted.srt';
+  const content=convBlocks.map((b,i)=>`${i+1}\n${b.start} --> ${b.end}\n${b.text}\n`).join('\n');
+  const fname=convFileNameBase+'_converted.srt';
   const bytes=new TextEncoder().encode(content);
   let binary='';bytes.forEach(b=>binary+=String.fromCharCode(b));
   const b64=btoa(binary);
@@ -1783,6 +1776,191 @@ document.getElementById('btnMergeDownload').addEventListener('click',()=>{
   a.download=fname;
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 });
+// ══════════════════════════════════════════════════════════════
+// PERSISTENT STORAGE  (localStorage)
+// ══════════════════════════════════════════════════════════════
+const STORE = {
+  save(key, val){
+    try{ localStorage.setItem('subcleaner_'+key, JSON.stringify(val)); }catch(e){}
+  },
+  load(key, def){
+    try{
+      const v=localStorage.getItem('subcleaner_'+key);
+      return v!==null ? JSON.parse(v) : def;
+    }catch(e){ return def; }
+  },
+  remove(key){ try{ localStorage.removeItem('subcleaner_'+key); }catch(e){} }
+};
+
+// ── 1. Settings: replacements, symbols, toggles, mergeLimit ──────────────────
+function saveSettings(){
+  // toggles
+  const toggles={};
+  ['opt_width','opt_symbols','opt_speaker','opt_rubi','opt_comments',
+   'opt_merge_pair','opt_merge_arrow','opt_dual','opt_digit','opt_textreplace',
+   'opt_mergesame','opt_srt_blank2'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) toggles[id]=el.checked;
+  });
+  STORE.save('toggles', toggles);
+  // symbols
+  const sf=document.getElementById('symbolsField');
+  if(sf) STORE.save('symbols', sf.value);
+  // merge limit
+  const ml=document.getElementById('mergeLimit');
+  if(ml) STORE.save('mergeLimit', ml.value);
+}
+
+function saveReplacements(){
+  const rows=[];
+  document.querySelectorAll('#replaceTableBody tr').forEach(tr=>{
+    const f=tr.querySelector('.rep-from');
+    const t=tr.querySelector('.rep-to');
+    if(f&&t) rows.push([f.value,t.value]);
+  });
+  STORE.save('replacements', rows);
+}
+
+function loadSettings(){
+  // toggles
+  const toggles=STORE.load('toggles',{});
+  Object.entries(toggles).forEach(([id,val])=>{
+    const el=document.getElementById(id);
+    if(el) el.checked=val;
+  });
+  // symbols
+  const sym=STORE.load('symbols',null);
+  if(sym!==null){ const sf=document.getElementById('symbolsField'); if(sf) sf.value=sym; }
+  // merge limit
+  const ml=STORE.load('mergeLimit',null);
+  if(ml!==null){ const mle=document.getElementById('mergeLimit'); if(mle) mle.value=ml; }
+  // replacements
+  const rows=STORE.load('replacements',null);
+  if(rows&&rows.length>0) buildReplaceTable(rows);
+}
+
+// Auto-save toggles on change
+document.querySelectorAll('.toggle input[type=checkbox]').forEach(el=>{
+  el.addEventListener('change', saveSettings);
+});
+const _sf=document.getElementById('symbolsField');
+if(_sf) _sf.addEventListener('input', saveSettings);
+const _ml=document.getElementById('mergeLimit');
+if(_ml) _ml.addEventListener('change', saveSettings);
+
+// ── 2. File content + processing result ──────────────────────────────────────
+function saveFileState(){
+  try{
+    // Save parsed blocks (input) and output blocks
+    STORE.save('fileName', document.getElementById('fileName').textContent);
+    STORE.save('parsedBlocks', parsedBlocks);
+    STORE.save('outputBlocks', outputBlocks);
+    STORE.save('outputSRT', outputSRT);
+    STORE.save('currentTab', currentTab);
+  }catch(e){ console.warn('saveFileState failed:', e); }
+}
+
+function loadFileState(){
+  const fname=STORE.load('fileName',null);
+  if(!fname || fname==='未选择文件') return;
+  const pb=STORE.load('parsedBlocks',[]);
+  const ob=STORE.load('outputBlocks',[]);
+  const srt=STORE.load('outputSRT','');
+  if(!pb.length) return;
+  parsedBlocks=pb;
+  outputBlocks=ob;
+  outputSRT=srt;
+  document.getElementById('fileName').textContent=fname;
+  document.getElementById('btnProcess').disabled=false;
+  if(ob.length){
+    document.getElementById('btnDownload').disabled=false;
+    srcMapGlobal={};
+    // rebuild srcMap from outputBlocks
+    ob.forEach(b=>{
+      if(b._srcStart!==undefined&&b._srcEnd!==undefined){
+        for(let s=b._srcStart;s<=b._srcEnd;s++) srcMapGlobal[s]=b;
+      }
+    });
+    document.getElementById('statIn').textContent=pb.length;
+    document.getElementById('statOut').textContent=ob.length;
+    document.getElementById('statsBar').style.display='flex';
+    setLog('ok','已恢复上次处理结果：'+fname);
+    renderPanels();
+  } else {
+    setLog('ok','已恢复上次文件：'+fname);
+  }
+}
+
+// ── 3. Bilingual merge state ──────────────────────────────────────────────────
+function saveMergeState(){
+  try{
+    STORE.save('mergeJp', mergeJpBlocks);
+    STORE.save('mergeCn', mergeCnBlocks);
+    STORE.save('mergeOffset', mergeOffset);
+    STORE.save('mergeRowAdj', mergeRowAdj);
+    STORE.save('mergeJpName', document.getElementById('mergeJpName').textContent);
+    STORE.save('mergeCnName', document.getElementById('mergeCnName').textContent);
+  }catch(e){}
+}
+
+function loadMergeState(){
+  const jp=STORE.load('mergeJp',[]);
+  const cn=STORE.load('mergeCn',[]);
+  if(!jp.length) return;
+  mergeJpBlocks=jp;
+  mergeCnBlocks=cn;
+  mergeOffset=STORE.load('mergeOffset',0);
+  mergeRowAdj=STORE.load('mergeRowAdj',{});
+  const od=document.getElementById('offsetDisplay');
+  if(od) od.textContent=mergeOffset;
+  const jpName=STORE.load('mergeJpName','');
+  const cnName=STORE.load('mergeCnName','');
+  if(jpName) document.getElementById('mergeJpName').textContent=jpName;
+  if(cnName) document.getElementById('mergeCnName').textContent=cnName;
+  // Update merge download button
+  const btn=document.getElementById('btnMergeDownload');
+  if(btn) btn.disabled=false;
+  // Update info
+  const matched=jp.filter((_,i)=>{const ci=getCnForJp(i);return ci>=0&&ci<cn.length;}).length;
+  const info=document.getElementById('mergeInfo');
+  if(info) info.textContent=`左侧 ${jp.length} 条，右侧 ${cn.length} 条，匹配 ${matched} 条（已恢复）`;
+}
+
+// ── 4. Hook into existing functions to auto-save ─────────────────────────────
+
+// Save after processing
+const _origBtnProcess = document.getElementById('btnProcess');
+if(_origBtnProcess){
+  _origBtnProcess.addEventListener('click', ()=>{
+    // delay to let processing finish first
+    setTimeout(saveFileState, 100);
+  });
+}
+
+// Save merge state on every render
+const _origRenderMerge = renderMergePreview;
+renderMergePreview = function(){
+  _origRenderMerge();
+  saveMergeState();
+};
+
+// ── 5. Add "清除存储" button to sidebar ──────────────────────────────────────
+const _resetBtn = document.getElementById('btnReset');
+if(_resetBtn){
+  _resetBtn.addEventListener('click', ()=>{
+    // clear file state on reset
+    ['fileName','parsedBlocks','outputBlocks','outputSRT','currentTab',
+     'mergeJp','mergeCn','mergeOffset','mergeRowAdj','mergeJpName','mergeCnName']
+    .forEach(k=>STORE.remove(k));
+  });
+}
+
+// ── 6. Restore on page load ───────────────────────────────────────────────────
+(function restoreAll(){
+  loadSettings();
+  loadFileState();
+  loadMergeState();
+})();
 
 </script>
 </body>
