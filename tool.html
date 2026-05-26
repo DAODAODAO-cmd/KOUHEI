@@ -669,6 +669,11 @@
         <button class="bi-offset-btn bi-undo-btn" onclick="undoMerge()" title="撤回 Ctrl+Z">↩</button>
       </div>
       <div id="mergeInfo" class="bi-info"></div>
+      <div style="display:flex;gap:6px;margin-top:0;">
+        <button class="btn btn-outline" id="btnSaveProgress" style="font-size:11px;flex:1;" title="保存当前对齐进度为 JSON 文件">💾 保存进度</button>
+        <button class="btn btn-outline" id="btnLoadProgress" style="font-size:11px;flex:1;" title="导入之前保存的进度文件">📂 导入进度</button>
+        <input type="file" id="progressFileInput" accept=".json" style="display:none;">
+      </div>
       <button class="btn btn-green" id="btnMergeDownload" disabled style="font-size:12px;">↓ 下载双语合并 .srt</button>
     </div>
 
@@ -768,11 +773,11 @@
 </div>
 
 <script>
-// ── State ────────────────────────────────────────────────────────────────────
+// ----------------------------------------
 let rawText='', outputSRT='', currentTab='compare';
 let parsedBlocks=[], outputBlocks=[], srcMapGlobal={};
 
-// ── Default replacements ──────────────────────────────────────────────────────
+// ----------------------------------------
 const defaultReplacements = [
   ['ウソ','嘘'],['イヤ','嫌'],['ダメ','だめ'],['ヤツ','奴'],
   ['ジャマ','邪魔'],['ケンカ','喧嘩'],['ホント','本当'],
@@ -807,7 +812,7 @@ function getReplacements() {
   return result;
 }
 
-// ── Kana lookup ───────────────────────────────────────────────────────────────
+// ----------------------------------------
 const halfKanaLookup = {
   'ｶﾞ':'ガ','ｷﾞ':'ギ','ｸﾞ':'グ','ｹﾞ':'ゲ','ｺﾞ':'ゴ',
   'ｻﾞ':'ザ','ｼﾞ':'ジ','ｽﾞ':'ズ','ｾﾞ':'ゼ','ｿﾞ':'ゾ',
@@ -832,7 +837,7 @@ const halfKanaLookup = {
 };
 const toFullwidth={'0':'０','1':'１','2':'２','3':'３','4':'４','5':'５','6':'６','7':'７','8':'８','9':'９'};
 
-// ── File upload ───────────────────────────────────────────────────────────────
+// ----------------------------------------
 const uploadZone=document.getElementById('uploadZone');
 const fileInput=document.getElementById('fileInput');
 uploadZone.addEventListener('click',()=>fileInput.click());
@@ -866,7 +871,7 @@ function handleFile(file){
   reader.readAsText(file,'utf-8');
 }
 
-// ── Parsers ───────────────────────────────────────────────────────────────────
+// ----------------------------------------
 function parseASS(text){
   const blocks=[];let counter=1;
   for(const line of text.split(/\r?\n/)){
@@ -940,7 +945,7 @@ function parseSRT(text){
   return blocks;
 }
 
-// ── Processing ────────────────────────────────────────────────────────────────
+// ----------------------------------------
 function processBlocks(blocks){
   const opts={
     width:      document.getElementById('opt_width').checked,
@@ -1190,7 +1195,7 @@ function buildSRTWithExtraBlankLines(blocks){
   return parts.join('\r\n\r\n\r\n') + (parts.length ? '\r\n' : '');
 }
 
-// ── UI ────────────────────────────────────────────────────────────────────────
+// ----------------------------------------
 document.getElementById('btnProcess').addEventListener('click',()=>{
   if(!parsedBlocks.length) return;
   try{
@@ -1364,7 +1369,7 @@ function setLog(type,msg){
   el.textContent=msg;
 }
 
-// ── Pure ASS/VTT → SRT Converter ────────────────────────────────────────────
+// ----------------------------------------
 let convBlocks=[], convFileNameBase='';
 
 function handleConvFile(file){
@@ -1420,7 +1425,7 @@ if(_convBtn) _convBtn.addEventListener('click',()=>{
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 });
 
-// ── Bilingual SRT Split ───────────────────────────────────────────────────────
+// ----------------------------------------
 let splitBlocks=[], splitFileName='';
 
 // split zone handled by setupBiBox
@@ -1472,7 +1477,7 @@ function downloadSplit(lineIndex){
 document.getElementById('btnSplitLine1').addEventListener('click',()=>downloadSplit(0));
 document.getElementById('btnSplitLine2').addEventListener('click',()=>downloadSplit(1));
 
-// ── Editable result text ────────────────────────────────────────────────────
+// ----------------------------------------
 // Event delegation on the main content area. Handles input events on any
 // .srt-text.editable element and syncs back to outputBlocks[dataset.outIdx].
 function handleResultEdit(e){
@@ -1521,7 +1526,7 @@ _previewPanels.addEventListener('input', handleResultEdit);
 _previewPanels.addEventListener('keydown', handleResultKey);
 _previewPanels.addEventListener('paste', handleResultPaste);
 
-// ── Sidebar tab switcher ─────────────────────────────────────────────────────
+// ----------------------------------------
 function setSideTab(tab){
   const isProc = tab==='process';
   document.getElementById('sidePanelProcess').classList.toggle('hidden',!isProc);
@@ -1532,7 +1537,7 @@ function setSideTab(tab){
   if(isProc && currentTab!=='compare') setTab('compare');
 }
 
-// ── Bilingual upload boxes ────────────────────────────────────────────────────
+// ----------------------------------------
 function setupBiBox(zoneId, inputId, onFile){
   const zone=document.getElementById(zoneId);
   const input=document.getElementById(inputId);
@@ -1544,7 +1549,7 @@ function setupBiBox(zoneId, inputId, onFile){
   input.addEventListener('change',()=>{if(input.files[0])onFile(input.files[0]);});
 }
 
-// ── Bilingual Merge Tool ──────────────────────────────────────────────────────
+// ----------------------------------------
 let mergeJpBlocks=[], mergeCnBlocks=[], mergeOffset=0, mergeRowAdj={};
 // mergeRowAdj: {jpIndex: cnAdjustment} per-row local offset adjustments
 
@@ -1667,7 +1672,7 @@ function saveSplitEdit(el){
   lines[line]=val; splitBlocks[idx].text=lines.join('\n');
 }
 
-// ── Undo stack ──────────────────────────────────────────────────────────────
+// ----------------------------------------
 const mergeUndoStack=[];
 function pushUndo(){
   mergeUndoStack.push({
@@ -1799,7 +1804,7 @@ const STORE = {
   remove(key){ try{ localStorage.removeItem('subcleaner_'+key); }catch(e){} }
 };
 
-// ── 1. Settings: replacements, symbols, toggles, mergeLimit ──────────────────
+// ----------------------------------------
 function saveSettings(){
   // toggles
   const toggles={};
@@ -1855,7 +1860,7 @@ if(_sf) _sf.addEventListener('input', saveSettings);
 const _ml=document.getElementById('mergeLimit');
 if(_ml) _ml.addEventListener('change', saveSettings);
 
-// ── 2. File content + processing result ──────────────────────────────────────
+// ----------------------------------------
 function saveFileState(){
   try{
     // Save parsed blocks (input) and output blocks
@@ -1898,7 +1903,7 @@ function loadFileState(){
   }
 }
 
-// ── 3. Bilingual merge state ──────────────────────────────────────────────────
+// ----------------------------------------
 function saveMergeState(){
   try{
     // Only save text content to minimize storage size
@@ -1934,7 +1939,7 @@ function loadMergeState(){
   renderMergePreview();
 }
 
-// ── 4. Hook into existing functions to auto-save ─────────────────────────────
+// ----------------------------------------
 
 // Save after processing
 const _origBtnProcess = document.getElementById('btnProcess');
@@ -1947,7 +1952,7 @@ if(_origBtnProcess){
 
 // Note: saveMergeState is called explicitly after file load and after adjustments
 
-// ── 5. Add "清除存储" button to sidebar ──────────────────────────────────────
+// ----------------------------------------
 const _resetBtn = document.getElementById('btnReset');
 if(_resetBtn){
   _resetBtn.addEventListener('click', ()=>{
@@ -1958,13 +1963,74 @@ if(_resetBtn){
   });
 }
 
-// ── 6. Restore on page load ───────────────────────────────────────────────────
-(function restoreAll(){
-  loadSettings();
-  loadFileState();
-  loadMergeState();
-})();
+// ----------------------------------------
+// restoreAll called at end of script
 
+// ----------------------------------------
+document.getElementById('btnSaveProgress').addEventListener('click',()=>{
+  if(!mergeJpBlocks.length) return;
+  const data={
+    version:1,
+    jpBlocks: mergeJpBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text})),
+    cnBlocks: mergeCnBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text})),
+    offset:   mergeOffset,
+    rowAdj:   mergeRowAdj,
+    jpName:   document.getElementById('mergeJpName').textContent,
+    cnName:   document.getElementById('mergeCnName').textContent,
+  };
+  const json=JSON.stringify(data,null,2);
+  const bytes=new TextEncoder().encode(json);
+  let binary=''; bytes.forEach(b=>binary+=String.fromCharCode(b));
+  const b64=btoa(binary);
+  const a=document.createElement('a');
+  a.href='data:application/json;base64,'+b64;
+  const jpName=document.getElementById('mergeJpName').textContent.replace(/\.[^.]+$/,'').replace(/未选择/,'merge');
+  a.download=jpName+'_progress.json';
+  document.body.appendChild(a);a.click();document.body.removeChild(a);
+});
+
+document.getElementById('btnLoadProgress').addEventListener('click',()=>{
+  document.getElementById('progressFileInput').click();
+});
+
+document.getElementById('progressFileInput').addEventListener('change',function(){
+  const file=this.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    try{
+      const data=JSON.parse(e.target.result);
+      if(!data.jpBlocks||!data.jpBlocks.length){
+        alert('无效的进度文件');return;
+      }
+      mergeJpBlocks=data.jpBlocks;
+      mergeCnBlocks=data.cnBlocks||[];
+      mergeOffset=data.offset||0;
+      mergeRowAdj=data.rowAdj||{};
+      const od=document.getElementById('offsetDisplay');
+      if(od) od.textContent=mergeOffset;
+      document.getElementById('mergeJpName').textContent=data.jpName||'已恢复';
+      document.getElementById('mergeCnName').textContent=data.cnName||'已恢复';
+      document.getElementById('btnMergeDownload').disabled=false;
+      setSideTab('bilingual');
+      setTab('bilingual');
+      renderMergePreview();
+      setLog('ok','进度已恢复：'+file.name);
+    }catch(err){
+      alert('读取进度文件失败：'+err.message);
+    }
+  };
+  reader.readAsText(file,'utf-8');
+  this.value='';
+});
+
+
+// Restore all saved state after all functions defined
+(function restoreAll(){
+  try{ loadSettings(); }catch(e){}
+  try{ loadFileState(); }catch(e){}
+  try{ loadMergeState(); }catch(e){}
+})();
 </script>
 </body>
 </html>
