@@ -1469,9 +1469,6 @@ function downloadSplit(lineIndex){
   document.body.appendChild(a);a.click();document.body.removeChild(a);
 }
 
-document.getElementById('btnSplitLine1').addEventListener('click',()=>downloadSplit(0));
-document.getElementById('btnSplitLine2').addEventListener('click',()=>downloadSplit(1));
-
 // ----------------------------------------
 // Event delegation on the main content area. Handles input events on any
 // .srt-text.editable element and syncs back to outputBlocks[dataset.outIdx].
