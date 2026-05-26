@@ -1781,7 +1781,8 @@ document.getElementById('btnMergeDownload').addEventListener('click',()=>{
 // ══════════════════════════════════════════════════════════════
 const STORE = {
   save(key, val){
-    try{ localStorage.setItem('subcleaner_'+key, JSON.stringify(val)); }catch(e){}
+    try{ localStorage.setItem('subcleaner_'+key, JSON.stringify(val)); }
+    catch(e){ console.warn('STORE.save failed for key:', key, e.message); }
   },
   load(key, def){
     try{
@@ -1894,13 +1895,16 @@ function loadFileState(){
 // ── 3. Bilingual merge state ──────────────────────────────────────────────────
 function saveMergeState(){
   try{
-    STORE.save('mergeJp', mergeJpBlocks);
-    STORE.save('mergeCn', mergeCnBlocks);
+    // Only save text content to minimize storage size
+    const jpMin=mergeJpBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text}));
+    const cnMin=mergeCnBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text}));
+    STORE.save('mergeJp', jpMin);
+    STORE.save('mergeCn', cnMin);
     STORE.save('mergeOffset', mergeOffset);
     STORE.save('mergeRowAdj', mergeRowAdj);
     STORE.save('mergeJpName', document.getElementById('mergeJpName').textContent);
     STORE.save('mergeCnName', document.getElementById('mergeCnName').textContent);
-  }catch(e){}
+  }catch(e){ console.warn('saveMergeState failed:', e); }
 }
 
 function loadMergeState(){
@@ -1920,10 +1924,8 @@ function loadMergeState(){
   // Update merge download button
   const btn=document.getElementById('btnMergeDownload');
   if(btn) btn.disabled=false;
-  // Update info
-  const matched=jp.filter((_,i)=>{const ci=getCnForJp(i);return ci>=0&&ci<cn.length;}).length;
-  const info=document.getElementById('mergeInfo');
-  if(info) info.textContent=`左侧 ${jp.length} 条，右侧 ${cn.length} 条，匹配 ${matched} 条（已恢复）`;
+  // Render the preview
+  renderMergePreview();
 }
 
 // ── 4. Hook into existing functions to auto-save ─────────────────────────────
