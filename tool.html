@@ -1578,13 +1578,17 @@ setupBiBox('mergeJpZone','mergeJpInput',file=>{
   const r=new FileReader();r.onload=e=>{
     mergeJpBlocks=parseSRT(e.target.result);mergeRowAdj={};
     document.getElementById('mergeJpName').textContent=file.name;
-    renderMergePreview();};r.readAsText(file,'utf-8');
+    renderMergePreview();
+    saveMergeState();
+  };r.readAsText(file,'utf-8');
 });
 setupBiBox('mergeCnZone','mergeCnInput',file=>{
   const r=new FileReader();r.onload=e=>{
     mergeCnBlocks=parseSRT(e.target.result);mergeRowAdj={};
     document.getElementById('mergeCnName').textContent=file.name;
-    renderMergePreview();};r.readAsText(file,'utf-8');
+    renderMergePreview();
+    saveMergeState();
+  };r.readAsText(file,'utf-8');
 });
 setupBiBox('splitUploadZone','splitFileInput',handleSplitFile);
 
@@ -1595,12 +1599,14 @@ function adjustOffset(delta){
   const od=document.getElementById('offsetDisplay');
   if(od) od.textContent=mergeOffset;
   renderMergePreview();
+  saveMergeState();
 }
 
 function adjustRow(jpIdx, delta){
   pushUndo();
   mergeRowAdj[jpIdx]=(mergeRowAdj[jpIdx]||0)+delta;
   renderMergePreview();
+  saveMergeState();
 }
 
 function getCnForJp(jpIdx){
@@ -1939,12 +1945,7 @@ if(_origBtnProcess){
   });
 }
 
-// Save merge state on every render
-const _origRenderMerge = renderMergePreview;
-renderMergePreview = function(){
-  _origRenderMerge();
-  saveMergeState();
-};
+// Note: saveMergeState is called explicitly after file load and after adjustments
 
 // ── 5. Add "清除存储" button to sidebar ──────────────────────────────────────
 const _resetBtn = document.getElementById('btnReset');
