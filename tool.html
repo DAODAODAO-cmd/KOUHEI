@@ -1905,11 +1905,17 @@ function loadMergeState(){
   const cnName=STORE.load('mergeCnName','');
   if(jpName) document.getElementById('mergeJpName').textContent=jpName;
   if(cnName) document.getElementById('mergeCnName').textContent=cnName;
-  // Update merge download button
   const btn=document.getElementById('btnMergeDownload');
   if(btn) btn.disabled=false;
-  // Render the preview
-  renderMergePreview();
+  // Switch to bilingual tab first so DOM is ready, then render
+  try{ setSideTab('bilingual'); }catch(e){}
+  try{ setTab('bilingual'); }catch(e){}
+  setTimeout(()=>{
+    try{
+      renderMergePreview();
+      console.log('[STORE] merge state restored:', jp.length, 'jp,', cn.length, 'cn');
+    }catch(e){ console.warn('[STORE] loadMergeState render failed:', e); }
+  }, 100);
 }
 
 // ----------------------------------------
