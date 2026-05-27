@@ -1545,31 +1545,9 @@ function setupBiBox(zoneId, inputId, onFile){
 let mergeJpBlocks=[], mergeCnBlocks=[], mergeOffset=0, mergeRowAdj={};
 // mergeRowAdj: {jpIndex: cnAdjustment} per-row local offset adjustments
 
-function setupMergeZone(zoneId, inputId, nameId, onLoad){
-  const zone=document.getElementById(zoneId);
-  const input=document.getElementById(inputId);
-  zone.addEventListener('click',()=>input.click());
-  zone.addEventListener('dragover',e=>{e.preventDefault();zone.classList.add('drag-over');});
-  zone.addEventListener('dragleave',()=>zone.classList.remove('drag-over'));
-  zone.addEventListener('drop',e=>{
-    e.preventDefault();zone.classList.remove('drag-over');
-    if(e.dataTransfer.files[0]) loadMergeFile(e.dataTransfer.files[0],nameId,onLoad);
-  });
-  input.addEventListener('change',()=>{
-    if(input.files[0]) loadMergeFile(input.files[0],nameId,onLoad);
-  });
-}
+// old setupMergeZone removed
 
-function loadMergeFile(file,nameId,onLoad){
-  const reader=new FileReader();
-  reader.onload=e=>{
-    const blocks=parseSRT(e.target.result);
-    document.getElementById(nameId).textContent=file.name;
-    onLoad(blocks);
-    renderMergePreview();
-  };
-  reader.readAsText(file,'utf-8');
-}
+// old loadMergeFile removed
 
 setupBiBox('mergeJpZone','mergeJpInput',file=>{
   const r=new FileReader();r.onload=e=>{
@@ -1784,7 +1762,10 @@ document.getElementById('btnMergeDownload').addEventListener('click',()=>{
 // ══════════════════════════════════════════════════════════════
 const STORE = {
   save(key, val){
-    try{ localStorage.setItem('subcleaner_'+key, JSON.stringify(val)); }
+    try{
+      localStorage.setItem('subcleaner_'+key, JSON.stringify(val));
+      console.log('[STORE] saved:', key, typeof val==='object'?JSON.stringify(val).length+'bytes':val);
+    }
     catch(e){ console.warn('STORE.save failed for key:', key, e.message); }
   },
   load(key, def){
