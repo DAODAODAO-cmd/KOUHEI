@@ -669,6 +669,10 @@
         <button class="bi-offset-btn bi-undo-btn" onclick="undoMerge()" title="撤回 Ctrl+Z">↩</button>
       </div>
       <div id="mergeInfo" class="bi-info"></div>
+      <button class="btn btn-outline" id="btnRestoreProgress"
+        style="font-size:11px;display:none;background:rgba(99,85,212,0.06);border-color:var(--accent);color:var(--accent);">
+        ↺ 恢复上次进度
+      </button>
       <button class="btn btn-green" id="btnMergeDownload" disabled style="font-size:12px;">↓ 下载双语合并 .srt</button>
     </div>
 
@@ -1942,8 +1946,22 @@ if(_resetBtn){
   });
 }
 
+document.getElementById('btnRestoreProgress').addEventListener('click',()=>{
+  try{
+    loadMergeState();
+    document.getElementById('btnRestoreProgress').style.display='none';
+  }catch(e){ console.warn('restore failed:', e); }
+});
+
 // ----------------------------------------
-// restoreAll called at end of script
+// Auto-restore settings (toggles, symbols, replacements) on load
+window.addEventListener('load', function(){
+  try{ loadSettings(); }catch(e){ console.warn('loadSettings:', e); }
+  // Check if there's saved merge progress and show indicator
+  const jp=STORE.load('mergeJp',[]);
+  const btn=document.getElementById('btnRestoreProgress');
+  if(btn) btn.style.display=jp.length>0?'':'none';
+});
 
 </script>
 </body>
