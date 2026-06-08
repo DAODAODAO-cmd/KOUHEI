@@ -1586,7 +1586,11 @@ function adjustOffset(delta){
 
 function adjustRow(jpIdx, delta){
   pushUndo();
+  // Add delta at jpIdx, cancel at jpIdx+1 so only this row is affected
   mergeRowAdj[jpIdx]=(mergeRowAdj[jpIdx]||0)+delta;
+  if(jpIdx+1<mergeJpBlocks.length){
+    mergeRowAdj[jpIdx+1]=(mergeRowAdj[jpIdx+1]||0)-delta;
+  }
   renderMergePreview();
   saveMergeState();
 }
@@ -1689,16 +1693,16 @@ function saveMergeEdit(el){
 function mergeUpRow(i){
   if(i<=0) return;
   pushUndo();
-  // Only merge RIGHT side (cn), left side stays unchanged
+  // Only merge RIGHT side (cn) text into prev, clear current cn text
+  // Do NOT splice - keep array length intact so getCnForJp offsets stay valid
   const ciCur=getCnForJp(i);
   const ciPrev=getCnForJp(i-1);
   const cnCur=(ciCur>=0&&ciCur<mergeCnBlocks.length)?mergeCnBlocks[ciCur]:null;
   const cnPrev=(ciPrev>=0&&ciPrev<mergeCnBlocks.length)?mergeCnBlocks[ciPrev]:null;
   if(cnCur&&cnPrev){
     cnPrev.text=(cnPrev.text+' '+cnCur.text).trim();
-    mergeCnBlocks.splice(ciCur,1);
+    cnCur.text='';  // clear instead of splice - keeps array indices valid
   }
-  mergeRowAdj={};
   renderMergePreview();
   saveMergeState();
 }
@@ -1706,20 +1710,20 @@ function mergeUpRow(i){
 function mergeBothUpRow(i){
   if(i<=0) return;
   pushUndo();
-  // Merge BOTH left and right
-  const jpCur=mergeJpBlocks[i];
-  const jpPrev=mergeJpBlocks[i-1];
-  if(jpCur&&jpPrev){
-    jpPrev.text=(jpPrev.text+' '+jpCur.text).trim();
-    mergeJpBlocks.splice(i,1);
-  }
+  // Merge BOTH: splice jp (left has its own array), clear cn text (keep array intact)
   const ciCur=getCnForJp(i);
   const ciPrev=getCnForJp(i-1);
   const cnCur=(ciCur>=0&&ciCur<mergeCnBlocks.length)?mergeCnBlocks[ciCur]:null;
   const cnPrev=(ciPrev>=0&&ciPrev<mergeCnBlocks.length)?mergeCnBlocks[ciPrev]:null;
   if(cnCur&&cnPrev){
     cnPrev.text=(cnPrev.text+' '+cnCur.text).trim();
-    mergeCnBlocks.splice(ciCur,1);
+    cnCur.text='';
+  }
+  const jpCur=mergeJpBlocks[i];
+  const jpPrev=mergeJpBlocks[i-1];
+  if(jpCur&&jpPrev){
+    jpPrev.text=(jpPrev.text+' '+jpCur.text).trim();
+    mergeJpBlocks.splice(i,1);
   }
   mergeRowAdj={};
   renderMergePreview();
