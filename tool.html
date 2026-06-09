@@ -1595,11 +1595,14 @@ function adjustOffset(delta){
 function adjustRow(jpIdx, delta){
   pushUndo();
   if(delta>0){
-    // ↓: insert empty at jpIdx, pushing this row and everything below down by 1
+    // ↓: insert empty at jpIdx → this row and everything below shifts down by 1
     mergeCnBlocks.splice(jpIdx,0,{num:0,start:'00:00:00,000',end:'00:00:00,000',text:'',style:'default'});
   } else {
-    // ↑: remove the empty/current at jpIdx-1, pulling this row and below up by 1
-    if(jpIdx>0) mergeCnBlocks.splice(jpIdx-1,1);
+    // ↑: remove cn[jpIdx-1] regardless of content
+    // the removed row's content is recoverable via undo (↩)
+    if(jpIdx>0){
+      mergeCnBlocks.splice(jpIdx-1,1);
+    }
   }
   renderMergePreview();
   saveMergeState();
