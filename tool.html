@@ -491,7 +491,7 @@
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
 
   .mp-row {
-    display:grid; grid-template-columns:28px 1fr 1fr 44px;
+    display:grid; grid-template-columns:28px 1fr 1fr 82px;
     gap:0; border-bottom:1px solid var(--border);
     align-items:center; min-height:44px;
   }
@@ -513,11 +513,11 @@
   }
   .mp-cn.empty { color:var(--text3); font-style:italic; }
   .mp-btns {
-    display:flex; flex-direction:column;
-    align-items:center; gap:2px; padding:4px;
+    display:grid; grid-template-columns:repeat(2,34px);
+    align-items:center; justify-content:center; gap:3px; padding:4px;
   }
   .mp-btn {
-    width:18px; height:16px; border:1px solid var(--border);
+    width:34px; height:18px; border:1px solid var(--border);
     border-radius:3px; background:var(--bg2); cursor:pointer;
     font-size:10px; line-height:1; display:flex;
     align-items:center; justify-content:center; color:var(--text2);
@@ -1648,16 +1648,33 @@ setupBiBox('mergeCnZone','mergeCnInput',file=>{
 });
 setupBiBox('splitUploadZone','splitFileInput',handleSplitFile);
 
+function makeEmptyCnBlock(){
+  return {num:0,start:'00:00:00,000',end:'00:00:00,000',text:'',style:'default',_blank:true};
+}
+function isBlankCnBlock(block){
+  return !block||!String(block.text||'').trim();
+}
+function ensureCnIndex(index){
+  while(mergeCnBlocks.length<=index) mergeCnBlocks.push(makeEmptyCnBlock());
+}
+
 function adjustOffset(delta){
+  if(delta<0){
+    const need=Math.abs(delta);
+    let leadingBlank=0;
+    while(leadingBlank<mergeCnBlocks.length&&isBlankCnBlock(mergeCnBlocks[leadingBlank])) leadingBlank++;
+    if(leadingBlank<need){
+      setLog('err','整体上移已阻止：顶部没有足够的空行，避免删除右侧字幕');
+      return;
+    }
+  }
   pushUndo();
   if(delta>0){
-    // shift cn down: insert empty at front, whole cn moves down
-    for(let s=0;s<delta;s++)
-      mergeCnBlocks.unshift({num:0,start:'00:00:00,000',end:'00:00:00,000',text:'',style:'default'});
+    // 插入顶部空行，全部右侧字幕安全下移。
+    for(let s=0;s<delta;s++) mergeCnBlocks.unshift(makeEmptyCnBlock());
   } else {
-    // shift cn up: remove from front
-    for(let s=0;s<Math.abs(delta);s++)
-      if(mergeCnBlocks.length>0) mergeCnBlocks.shift();
+    // 只删除顶部真正的空行，不允许删除文字。
+    for(let s=0;s<Math.abs(delta);s++) mergeCnBlocks.shift();
   }
   mergeOffset+=delta;
   const od=document.getElementById('offsetDisplay');
@@ -1667,19 +1684,34 @@ function adjustOffset(delta){
 }
 
 function adjustRow(jpIdx, delta){
+  const target=jpIdx+delta;
+  if(target<0) return;
   pushUndo();
-  if(delta>0){
-    // ↓: insert empty at jpIdx → this row and everything below shifts down by 1
-    mergeCnBlocks.splice(jpIdx,0,{num:0,start:'00:00:00,000',end:'00:00:00,000',text:'',style:'default'});
-  } else {
-    // ↑: remove cn[jpIdx-1] regardless of content
-    // the removed row's content is recoverable via undo (↩)
-    if(jpIdx>0){
-      mergeCnBlocks.splice(jpIdx-1,1);
-    }
-  }
+  // 上下移动只交换两个位置，任何非空字幕都不会被覆盖或删除。
+  ensureCnIndex(Math.max(jpIdx,target));
+  [mergeCnBlocks[jpIdx],mergeCnBlocks[target]]=[mergeCnBlocks[target],mergeCnBlocks[jpIdx]];
   renderMergePreview();
   saveMergeState();
+}
+
+function insertBlankRow(index){
+  pushUndo();
+  mergeCnBlocks.splice(index,0,makeEmptyCnBlock());
+  renderMergePreview();
+  saveMergeState();
+  setLog('ok','已在第 '+(index+1)+' 行插入右侧空行');
+}
+
+function removeBlankRow(index){
+  if(index<0||index>=mergeCnBlocks.length||!isBlankCnBlock(mergeCnBlocks[index])){
+    setLog('err','只能删除真正的右侧空行；有文字的字幕不会被删除');
+    return;
+  }
+  pushUndo();
+  mergeCnBlocks.splice(index,1);
+  renderMergePreview();
+  saveMergeState();
+  setLog('ok','已删除第 '+(index+1)+' 行的右侧空行');
 }
 
 function getCnForJp(jpIdx){
@@ -1771,65 +1803,87 @@ function saveMergeEdit(el){
   if(type==='jp'&&mergeJpBlocks[idx]) mergeJpBlocks[idx].text=val;
   if(type==='cn'){
     const ci=getCnForJp(idx);
-    if(ci>=0&&ci<mergeCnBlocks.length) mergeCnBlocks[ci].text=val;
+    if(ci>=0){
+      ensureCnIndex(ci);
+      mergeCnBlocks[ci].text=val;
+      mergeCnBlocks[ci]._blank=!val;
+    }
   }
   queueMergeStateSave();
 }
 
 function mergeUpRow(i){
-  if(i<=0) return;
-  pushUndo();
-  // Only merge right side (cn): cn[i] into cn[i-1], remove cn[i]
-  // Insert empty cn at end to keep cn array same length as jp array
-  if(i<mergeCnBlocks.length){
-    if(i-1>=0) mergeCnBlocks[i-1].text=(mergeCnBlocks[i-1].text+' '+mergeCnBlocks[i].text).trim();
-    mergeCnBlocks.splice(i,1);
-    // Pad end with empty to maintain length alignment
-    mergeCnBlocks.push({num:0,start:'00:00:00,000',end:'00:00:00,000',text:'',style:'default'});
+  if(i<=0||i>=mergeCnBlocks.length||isBlankCnBlock(mergeCnBlocks[i])){
+    setLog('err','右侧合并已取消：当前行没有可合并的右侧文字');
+    return;
   }
+  pushUndo();
+  ensureCnIndex(i-1);
+  const current=mergeCnBlocks[i];
+  const previous=mergeCnBlocks[i-1];
+  previous.text=((previous.text||'')+' '+(current.text||'')).trim();
+  previous.end=current.end||previous.end;
+  previous._blank=false;
+  // 右侧少了一条，后续右侧字幕自然上移一位。
+  mergeCnBlocks.splice(i,1);
   renderMergePreview();
   saveMergeState();
+  setLog('ok','已将右侧第 '+(i+1)+' 句合并到第 '+i+' 句');
 }
 
 function mergeBothUpRow(i){
-  if(i<=0) return;
+  if(i<=0||!mergeJpBlocks[i]||!mergeJpBlocks[i-1]) return;
   pushUndo();
-  // Merge both sides and remove row i from both arrays
-  if(mergeJpBlocks[i]&&mergeJpBlocks[i-1])
-    mergeJpBlocks[i-1].text=(mergeJpBlocks[i-1].text+' '+mergeJpBlocks[i].text).trim();
+  // 左右文字分别合并；左侧主时间轴延长到当前句的结束时间。
+  const jpCurrent=mergeJpBlocks[i];
+  const jpPrevious=mergeJpBlocks[i-1];
+  jpPrevious.text=((jpPrevious.text||'')+' '+(jpCurrent.text||'')).trim();
+  jpPrevious.end=jpCurrent.end||jpPrevious.end;
   mergeJpBlocks.splice(i,1);
   if(i<mergeCnBlocks.length){
-    if(i>0) mergeCnBlocks[i-1].text=(mergeCnBlocks[i-1].text+' '+mergeCnBlocks[i].text).trim();
+    ensureCnIndex(i-1);
+    const cnCurrent=mergeCnBlocks[i];
+    const cnPrevious=mergeCnBlocks[i-1];
+    cnPrevious.text=((cnPrevious.text||'')+' '+(cnCurrent.text||'')).trim();
+    cnPrevious.end=cnCurrent.end||cnPrevious.end;
+    cnPrevious._blank=isBlankCnBlock(cnPrevious);
     mergeCnBlocks.splice(i,1);
   }
   renderMergePreview();
   saveMergeState();
+  setLog('ok','已将左右第 '+(i+1)+' 行一起合并到上一行');
 }
 
 function renderMergePreview(){
   const info=document.getElementById('mergeInfo');
   if(!mergeJpBlocks.length && !mergeCnBlocks.length) return;
 
-  const rows=mergeJpBlocks.map((jp,i)=>{
+  const rowCount=Math.max(mergeJpBlocks.length,mergeCnBlocks.length);
+  const rows=Array.from({length:rowCount},(_,i)=>{
+    const jp=mergeJpBlocks[i]||null;
     const ci=getCnForJp(i);
     const cn=(ci>=0 && ci<mergeCnBlocks.length)?mergeCnBlocks[ci]:null;
-    const cnText=cn?cn.text:'—';
-    const cnClass=cn?'mp-cn':'mp-cn empty';
+    const cnText=cn?(cn.text||''):'';
+    const cnClass=isBlankCnBlock(cn)?'mp-cn empty':'mp-cn';
+    const jpCell=jp
+      ? `<div class="mp-time">${jp.start.slice(0,8)}</div>
+         <div class="mp-edit" contenteditable="true" data-type="jp" data-idx="${i}" onblur="saveMergeEdit(this)">${escHtml(jp.text)}</div>`
+      : `<div class="mp-time">未匹配</div><div style="color:var(--text3);">— 左侧无对应行 —</div>`;
     return `<div class="mp-row">
       <div class="mp-idx">${i+1}</div>
       <div class="mp-jp">
-        <div class="mp-time">${jp.start.slice(0,8)}</div>
-        <div class="mp-edit" contenteditable="true" data-type="jp" data-idx="${i}" onblur="saveMergeEdit(this)">${escHtml(jp.text)}</div>
+        ${jpCell}
       </div>
       <div class="${cnClass}">
         <div class="mp-edit" contenteditable="true" data-type="cn" data-idx="${i}" onblur="saveMergeEdit(this)">${escHtml(cnText)}</div>
       </div>
       <div class="mp-btns">
-        ${i>0?`<button class="mp-btn mp-btn-merge" onclick="mergeUpRow(${i})" title="右侧合并到上一行">⥣</button>`:'<span style="display:inline-block;width:18px;"></span>'}
-        ${i>0?`<button class="mp-btn mp-btn-merge" onclick="mergeBothUpRow(${i})" title="左右一起合并到上一行" style="font-size:8px;">⥣⥣</button>`:'<span style="display:inline-block;width:18px;"></span>'}
-        <button class="mp-btn" onclick="adjustRow(${i},-1)" title="中文上移一条">↑</button>
-        <button class="mp-btn" onclick="adjustRow(${i},+1)" title="中文下移一条">↓</button>
-        <button class="mp-btn mp-btn-undo" onclick="undoMerge()" title="撤回">↩</button>
+        <button class="mp-btn" onclick="adjustRow(${i},-1)" title="右侧本句与上一句交换">↑</button>
+        <button class="mp-btn" onclick="adjustRow(${i},+1)" title="右侧本句与下一句交换">↓</button>
+        <button class="mp-btn mp-btn-merge" onclick="mergeUpRow(${i})" title="只把当前右侧文字合并到上一句">合右</button>
+        <button class="mp-btn mp-btn-merge" onclick="mergeBothUpRow(${i})" title="当前左右文字一起合并到上一行">合双</button>
+        <button class="mp-btn" onclick="insertBlankRow(${i})" title="在这里插入右侧空行，后面的右侧字幕下移">＋空</button>
+        <button class="mp-btn" onclick="removeBlankRow(${i})" title="只删除这里真正的右侧空行">−空</button>
       </div>
     </div>`;
   }).join('');
@@ -1837,8 +1891,12 @@ function renderMergePreview(){
   const scroller=document.getElementById('bilingualScroll');
   if(scroller) scroller.innerHTML=rows;
 
-  const matched=Math.min(mergeJpBlocks.length,mergeCnBlocks.filter(b=>b.text).length);
-  info.textContent=`日文 ${mergeJpBlocks.length} 条，中文 ${mergeCnBlocks.length} 条，匹配 ${matched} 条`;
+  let matched=0;
+  for(let i=0;i<Math.min(mergeJpBlocks.length,mergeCnBlocks.length);i++){
+    if(!isBlankCnBlock(mergeCnBlocks[i])) matched++;
+  }
+  const overflow=Math.max(0,mergeCnBlocks.length-mergeJpBlocks.length);
+  info.textContent=`日文 ${mergeJpBlocks.length} 条，中文槽位 ${mergeCnBlocks.length} 条，匹配 ${matched} 条${overflow?`，右侧多出 ${overflow} 条`:''}`;
   document.getElementById('btnMergeDownload').disabled=!(mergeJpBlocks.length>0);
   const _lob=document.getElementById('btnMergeRightOnly');
   if(_lob) _lob.disabled=!(mergeJpBlocks.length>0);
@@ -1852,7 +1910,7 @@ document.getElementById('btnMergeDownload').addEventListener('click',()=>{
     const jp=mergeJpBlocks[i];
     const ci=getCnForJp(i);
     const cn=(ci>=0&&ci<mergeCnBlocks.length)?mergeCnBlocks[ci]:null;
-    const text=cn?(jp.text+'\r\n'+cn.text):jp.text;
+    const text=(cn&&!isBlankCnBlock(cn))?(jp.text+'\r\n'+cn.text):jp.text;
     parts.push(num+'\r\n'+jp.start+' --> '+jp.end+'\r\n'+text+'\r\n');
     num++;
   }
