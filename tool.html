@@ -540,11 +540,41 @@
     <div style="display:flex;flex-direction:column;gap:8px;">
       <button class="btn btn-primary" id="btnProcess" disabled>▶ 开始处理</button>
       <button class="btn btn-green"   id="btnDownload" disabled>↓ 下载 .srt 文件</button>
-      <button class="btn btn-outline" id="btnReset">✕ 重置</button>
-      <button class="btn btn-outline" id="btnClearSaved"
-        style="color:#b42318;border-color:#e8b4ae;" title="删除浏览器里自动保存的全部进度">
-        🗑 清除全部存档
-      </button>
+    </div>
+
+    <div class="bi-card">
+      <div class="section-title" style="margin-bottom:7px;">工程存档</div>
+      <button id="btnReset" style="display:none;" aria-hidden="true"></button>
+      <div style="display:flex;gap:6px;margin-bottom:7px;">
+        <input id="projectNameInput" type="text" maxlength="80" placeholder="输入新项目名称，或修改当前名称"
+          style="width:100%;min-width:0;flex:1 1 auto;padding:8px;border:1px solid var(--border);border-radius:6px;
+          background:var(--bg2);color:var(--text);font-size:11px;">
+        <button class="btn btn-outline" id="btnNewProject"
+          style="width:auto;flex:0 0 62px;font-size:11px;padding:7px 9px;white-space:nowrap;">＋ 新建</button>
+      </div>
+      <div class="bi-info" style="margin-top:-4px;">修改名称后点到别处即自动保存</div>
+      <select id="projectSelect" style="width:100%;padding:8px;border:1px solid var(--border);
+        border-radius:6px;background:var(--bg2);color:var(--text);font-size:11px;">
+        <option value="">正在读取项目列表…</option>
+      </select>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px;">
+        <button class="btn btn-outline" id="btnExportProject" style="font-size:11px;padding:7px;">导出工程</button>
+        <button class="btn btn-outline" id="btnImportProject" style="font-size:11px;padding:7px;">导入工程</button>
+        <button class="btn btn-outline" id="btnDeleteProject"
+          style="font-size:11px;padding:7px;color:#b42318;">删除当前项目</button>
+        <button class="btn btn-outline" id="btnClearSaved"
+          style="font-size:11px;padding:7px;color:#b42318;border-color:#e8b4ae;"
+          title="删除浏览器里自动保存的全部进度">清除全部数据</button>
+        <input type="file" id="projectImportInput" accept=".json,application/json" style="display:none;">
+      </div>
+      <div class="section-title" style="margin:11px 0 7px;">历史版本（最近 20 个）</div>
+      <select id="historySelect" style="width:100%;padding:8px;border:1px solid var(--border);
+        border-radius:6px;background:var(--bg2);color:var(--text);font-size:11px;">
+        <option value="">暂无历史版本</option>
+      </select>
+      <button class="btn btn-outline" id="btnRestoreHistory"
+        style="width:100%;font-size:11px;padding:7px;margin-top:7px;">恢复所选版本</button>
+      <div id="projectStorageInfo" class="bi-info" style="margin-top:6px;">每次停止输入后自动建立版本</div>
     </div>
 
     <div>
@@ -1830,7 +1860,8 @@ const STORE = {
   remove(key){ try{ localStorage.removeItem('subcleaner_'+key); }catch(e){} }
 };
 
-let _fileSaveTimer=0, _mergeSaveTimer=0, _workspaceSaveTimer=0, _isClearingStorage=false;
+let _fileSaveTimer=0, _mergeSaveTimer=0, _workspaceSaveTimer=0, _projectCommitTimer=0;
+let _isClearingStorage=false, _isRestoringWorkspace=false;
 function showAutosaveStatus(message, isError){
   const el=document.getElementById('autosaveStatus');
   if(!el) return;
@@ -1841,11 +1872,11 @@ function showAutosaveStatus(message, isError){
 }
 function queueFileStateSave(){
   clearTimeout(_fileSaveTimer);
-  _fileSaveTimer=setTimeout(saveFileState,180);
+  _fileSaveTimer=setTimeout(()=>{ saveFileState(); queueProjectCommit('字幕文字修改'); },180);
 }
 function queueMergeStateSave(){
   clearTimeout(_mergeSaveTimer);
-  _mergeSaveTimer=setTimeout(saveMergeState,180);
+  _mergeSaveTimer=setTimeout(()=>{ saveMergeState(); queueProjectCommit('双语文字修改'); },180);
 }
 function queueWorkspaceSave(){
   clearTimeout(_workspaceSaveTimer);
@@ -1854,7 +1885,185 @@ function queueWorkspaceSave(){
     saveMergeState();
     saveSplitState();
     saveConverterState();
+    queueProjectCommit('操作后自动保存');
   },180);
+}
+
+const PROJECT_DATA_KEYS=[
+  'fileName','rawText','parsedBlocks','outputBlocks','outputSRT','currentTab','sideTab',
+  'mergeJp','mergeCn','mergeOffset','mergeRowAdj','mergeJpName','mergeCnName',
+  'splitBlocks','splitFileName','convBlocks','convFileNameBase','convFileName'
+];
+const SETTINGS_DATA_KEYS=['toggles','symbols','mergeLimit','replacements'];
+const ALL_WORKSPACE_KEYS=[...PROJECT_DATA_KEYS,...SETTINGS_DATA_KEYS];
+const WORKSPACE_DB_NAME='subcleaner_workspace_v2';
+const WORKSPACE_DB_VERSION=1;
+let _workspaceDbPromise=null, _lastHistorySignature='';
+
+function createProjectId(){
+  if(window.crypto&&crypto.randomUUID) return crypto.randomUUID();
+  return 'p_'+Date.now().toString(36)+'_'+Math.random().toString(36).slice(2);
+}
+function getActiveProjectId(){
+  let id=STORE.load('activeProjectId','');
+  if(!id){ id=createProjectId(); STORE.save('activeProjectId',id); }
+  return id;
+}
+function getActiveProjectName(){
+  return STORE.load('activeProjectName','未命名项目');
+}
+function setActiveProject(id,name){
+  STORE.save('activeProjectId',id);
+  STORE.save('activeProjectName',name||'未命名项目');
+}
+function openWorkspaceDb(){
+  if(_workspaceDbPromise) return _workspaceDbPromise;
+  _workspaceDbPromise=new Promise((resolve,reject)=>{
+    const req=indexedDB.open(WORKSPACE_DB_NAME,WORKSPACE_DB_VERSION);
+    req.onupgradeneeded=()=>{
+      const db=req.result;
+      if(!db.objectStoreNames.contains('projects')) db.createObjectStore('projects',{keyPath:'id'});
+      if(!db.objectStoreNames.contains('history')){
+        const hs=db.createObjectStore('history',{keyPath:'id',autoIncrement:true});
+        hs.createIndex('projectId','projectId',{unique:false});
+      }
+    };
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+  return _workspaceDbPromise;
+}
+function idbRequest(req){
+  return new Promise((resolve,reject)=>{
+    req.onsuccess=()=>resolve(req.result);
+    req.onerror=()=>reject(req.error);
+  });
+}
+function captureWorkspaceData(){
+  const data={};
+  ALL_WORKSPACE_KEYS.forEach(key=>{ data[key]=STORE.load(key,null); });
+  return data;
+}
+function writeWorkspaceData(data){
+  PROJECT_DATA_KEYS.forEach(key=>STORE.remove(key));
+  Object.entries(data||{}).forEach(([key,val])=>{
+    if(ALL_WORKSPACE_KEYS.includes(key)&&val!==null&&val!==undefined) STORE.save(key,val);
+  });
+}
+function queueProjectCommit(reason){
+  if(_isClearingStorage||_isRestoringWorkspace) return;
+  clearTimeout(_projectCommitTimer);
+  _projectCommitTimer=setTimeout(()=>commitCurrentProject(reason),900);
+}
+async function commitCurrentProject(reason='自动保存'){
+  if(_isClearingStorage||_isRestoringWorkspace) return;
+  try{
+    const db=await openWorkspaceDb();
+    const id=getActiveProjectId();
+    let name=getActiveProjectName();
+    if(name==='未命名项目'){
+      const fn=STORE.load('fileName','');
+      const jp=STORE.load('mergeJpName','');
+      if(fn&&fn!=='未选择文件') name=fn.replace(/\.[^.]+$/,'');
+      else if(jp&&jp!=='未选择') name=jp.replace(/\.[^.]+$/,'');
+      if(name!=='未命名项目') STORE.save('activeProjectName',name);
+    }
+    const data=captureWorkspaceData();
+    const now=Date.now();
+    const record={id,name,updatedAt:now,data};
+    await new Promise((resolve,reject)=>{
+      const tx=db.transaction('projects','readwrite');
+      tx.objectStore('projects').put(record);
+      tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+    });
+
+    const signature=JSON.stringify(data);
+    if(signature!==_lastHistorySignature){
+      _lastHistorySignature=signature;
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction('history','readwrite');
+        tx.objectStore('history').add({projectId:id,projectName:name,createdAt:now,reason,data});
+        tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+      });
+      await trimProjectHistory(id,20);
+    }
+    await refreshProjectManager();
+  }catch(e){
+    console.warn('project commit failed:',e);
+    showAutosaveStatus('工程存档失败，请导出备份',true);
+  }
+}
+async function trimProjectHistory(projectId,limit){
+  const db=await openWorkspaceDb();
+  const tx=db.transaction('history','readwrite');
+  const store=tx.objectStore('history');
+  const rows=await idbRequest(store.index('projectId').getAll(IDBKeyRange.only(projectId)));
+  rows.sort((a,b)=>a.createdAt-b.createdAt);
+  rows.slice(0,Math.max(0,rows.length-limit)).forEach(row=>store.delete(row.id));
+}
+async function getProjectRows(){
+  const db=await openWorkspaceDb();
+  const tx=db.transaction('projects','readonly');
+  const rows=await idbRequest(tx.objectStore('projects').getAll());
+  return rows.sort((a,b)=>b.updatedAt-a.updatedAt);
+}
+async function getHistoryRows(projectId){
+  const db=await openWorkspaceDb();
+  const tx=db.transaction('history','readonly');
+  const rows=await idbRequest(tx.objectStore('history').index('projectId').getAll(IDBKeyRange.only(projectId)));
+  return rows.sort((a,b)=>b.createdAt-a.createdAt).slice(0,20);
+}
+function formatProjectTime(value){
+  return new Date(value).toLocaleString('zh-CN',{month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+async function refreshProjectManager(){
+  const projectSelect=document.getElementById('projectSelect');
+  const historySelect=document.getElementById('historySelect');
+  if(!projectSelect||!historySelect) return;
+  try{
+    const activeId=getActiveProjectId();
+    const projects=await getProjectRows();
+    projectSelect.innerHTML=projects.length
+      ? projects.map(p=>`<option value="${escAttr(p.id)}"${p.id===activeId?' selected':''}>${escHtml(p.name)} · ${formatProjectTime(p.updatedAt)}</option>`).join('')
+      : `<option value="${escAttr(activeId)}" selected>${escHtml(getActiveProjectName())} · 当前项目</option>`;
+    const activeProject=projects.find(p=>p.id===activeId);
+    const nameInput=document.getElementById('projectNameInput');
+    if(nameInput&&document.activeElement!==nameInput) nameInput.value=activeProject?.name||getActiveProjectName();
+    const history=await getHistoryRows(activeId);
+    historySelect.innerHTML=history.length
+      ? history.map(h=>`<option value="${h.id}">${formatProjectTime(h.createdAt)} · ${escHtml(h.reason||'自动保存')}</option>`).join('')
+      : '<option value="">暂无历史版本</option>';
+    const info=document.getElementById('projectStorageInfo');
+    if(info) info.textContent=`共 ${projects.length||1} 个项目，当前项目有 ${history.length} 个历史版本`;
+  }catch(e){
+    console.warn('refreshProjectManager:',e);
+  }
+}
+async function restoreWorkspaceRecord(record,id,name){
+  if(!record||!record.data) return;
+  _isRestoringWorkspace=true;
+  _isClearingStorage=true;
+  clearTimeout(_projectCommitTimer);
+  writeWorkspaceData(record.data);
+  setActiveProject(id||record.id||createProjectId(),name||record.name||'恢复的项目');
+  location.reload();
+}
+function downloadProjectJson(){
+  saveFileState(); saveMergeState(); saveSplitState(); saveConverterState(); saveSettings(); saveReplacements();
+  const payload={
+    format:'subcleaner-workspace',
+    version:2,
+    exportedAt:new Date().toISOString(),
+    project:{id:getActiveProjectId(),name:getActiveProjectName(),updatedAt:Date.now(),data:captureWorkspaceData()}
+  };
+  const text=JSON.stringify(payload,null,2);
+  const bytes=new TextEncoder().encode(text);
+  let binary=''; bytes.forEach(b=>binary+=String.fromCharCode(b));
+  const a=document.createElement('a');
+  a.href='data:application/json;base64,'+btoa(binary);
+  const safeName=(getActiveProjectName()||'字幕工程').replace(/[\\/:*?"<>|]/g,'_');
+  a.download=safeName+'_工程备份.json';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
 }
 
 // ----------------------------------------
@@ -1874,6 +2083,7 @@ function saveSettings(){
   // merge limit
   const ml=document.getElementById('mergeLimit');
   if(ml) STORE.save('mergeLimit', ml.value);
+  queueProjectCommit('设置修改');
 }
 
 function saveReplacements(){
@@ -1884,6 +2094,7 @@ function saveReplacements(){
     if(f&&t) rows.push([f.value,t.value]);
   });
   STORE.save('replacements', rows);
+  queueProjectCommit('替换词修改');
 }
 
 function loadSettings(){
@@ -1923,6 +2134,7 @@ function saveFileState(){
     STORE.save('outputBlocks', outputBlocks);
     STORE.save('outputSRT', outputSRT);
     STORE.save('currentTab', currentTab);
+    queueProjectCommit('字幕处理进度');
   }catch(e){ console.warn('saveFileState failed:', e); }
 }
 
@@ -1962,6 +2174,7 @@ function loadFileState(){
 function saveSplitState(){
   STORE.save('splitBlocks',splitBlocks);
   STORE.save('splitFileName',splitFileName);
+  queueProjectCommit('双语拆分进度');
 }
 
 function loadSplitState(){
@@ -1981,6 +2194,7 @@ function saveConverterState(){
   STORE.save('convFileNameBase',convFileNameBase);
   const name=document.getElementById('convFileName');
   if(name) STORE.save('convFileName',name.textContent);
+  queueProjectCommit('格式转换进度');
 }
 
 function loadConverterState(){
@@ -2007,6 +2221,7 @@ function saveMergeState(){
     STORE.save('mergeRowAdj', mergeRowAdj);
     STORE.save('mergeJpName', document.getElementById('mergeJpName').textContent);
     STORE.save('mergeCnName', document.getElementById('mergeCnName').textContent);
+    queueProjectCommit('双语合并进度');
   }catch(e){ console.warn('saveMergeState failed:', e); }
 }
 
@@ -2064,15 +2279,25 @@ if(_resetBtn){
 
 const _clearSavedBtn=document.getElementById('btnClearSaved');
 if(_clearSavedBtn){
-  _clearSavedBtn.addEventListener('click',()=>{
+  _clearSavedBtn.addEventListener('click',async()=>{
     const ok=window.confirm(
-      '确定清除全部自动保存的存档吗？\n\n这会删除字幕处理、双语合并、拆分、转换和设置记录，且无法撤销。'
+      '确定清除全部数据吗？\n\n这会删除所有项目、历史版本、字幕进度和设置，且无法撤销。'
     );
     if(!ok) return;
     _isClearingStorage=true;
     clearTimeout(_fileSaveTimer);
     clearTimeout(_mergeSaveTimer);
     clearTimeout(_workspaceSaveTimer);
+    clearTimeout(_projectCommitTimer);
+    try{
+      const db=await openWorkspaceDb();
+      db.close();
+      _workspaceDbPromise=null;
+      await new Promise(resolve=>{
+        const req=indexedDB.deleteDatabase(WORKSPACE_DB_NAME);
+        req.onsuccess=req.onerror=req.onblocked=()=>resolve();
+      });
+    }catch(e){ console.warn('delete database:',e); }
     for(let i=localStorage.length-1;i>=0;i--){
       const key=localStorage.key(i);
       if(key&&key.startsWith('subcleaner_')) localStorage.removeItem(key);
@@ -2080,6 +2305,128 @@ if(_clearSavedBtn){
     location.reload();
   });
 }
+
+document.getElementById('btnNewProject').addEventListener('click',async()=>{
+  const inputName=document.getElementById('projectNameInput').value.trim();
+  const name=inputName||('新字幕项目_'+new Date().toISOString().slice(0,16).replace('T','_').replace(':',''));
+  try{ await commitCurrentProject('新建项目前自动保存'); }catch(e){}
+  _isClearingStorage=true;
+  PROJECT_DATA_KEYS.forEach(key=>STORE.remove(key));
+  setActiveProject(createProjectId(),name);
+  location.reload();
+});
+
+let _skipProjectRenameOnce=false;
+document.getElementById('btnNewProject').addEventListener('pointerdown',()=>{
+  _skipProjectRenameOnce=true;
+});
+
+async function saveCurrentProjectName(){
+  if(_skipProjectRenameOnce){
+    _skipProjectRenameOnce=false;
+    return;
+  }
+  const id=getActiveProjectId();
+  const name=document.getElementById('projectNameInput').value.trim();
+  if(!name||name===getActiveProjectName()) return;
+  const db=await openWorkspaceDb();
+  const txRead=db.transaction('projects','readonly');
+  let record=await idbRequest(txRead.objectStore('projects').get(id));
+  if(!record) record={id,name,updatedAt:Date.now(),data:captureWorkspaceData()};
+  record.name=name;
+  record.updatedAt=Date.now();
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction('projects','readwrite');
+    tx.objectStore('projects').put(record);
+    tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+  });
+  STORE.save('activeProjectName',name);
+  await refreshProjectManager();
+  showAutosaveStatus('✓ 项目名称已保存');
+}
+
+document.getElementById('projectNameInput').addEventListener('change',saveCurrentProjectName);
+document.getElementById('projectNameInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){ e.preventDefault(); e.currentTarget.blur(); }
+});
+
+document.getElementById('projectSelect').addEventListener('change',async function(){
+  const id=this.value;
+  if(!id) return;
+  if(id===getActiveProjectId()) return;
+  try{ await commitCurrentProject('切换项目前自动保存'); }catch(e){}
+  const db=await openWorkspaceDb();
+  const tx=db.transaction('projects','readonly');
+  const record=await idbRequest(tx.objectStore('projects').get(id));
+  if(record) await restoreWorkspaceRecord(record,record.id,record.name);
+});
+
+document.getElementById('btnDeleteProject').addEventListener('click',async()=>{
+  const id=document.getElementById('projectSelect').value;
+  if(!id) return;
+  const projects=await getProjectRows();
+  const target=projects.find(p=>p.id===id);
+  if(!window.confirm(`确定删除项目“${target?.name||'未命名项目'}”及其全部历史版本吗？`)) return;
+  const db=await openWorkspaceDb();
+  const history=await getHistoryRows(id);
+  await new Promise((resolve,reject)=>{
+    const tx=db.transaction(['projects','history'],'readwrite');
+    tx.objectStore('projects').delete(id);
+    history.forEach(row=>tx.objectStore('history').delete(row.id));
+    tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+  });
+  if(id===getActiveProjectId()){
+    _isClearingStorage=true;
+    PROJECT_DATA_KEYS.forEach(key=>STORE.remove(key));
+    setActiveProject(createProjectId(),'新字幕项目');
+    location.reload();
+  }else{
+    await refreshProjectManager();
+  }
+});
+
+document.getElementById('btnExportProject').addEventListener('click',downloadProjectJson);
+document.getElementById('btnImportProject').addEventListener('click',()=>{
+  document.getElementById('projectImportInput').click();
+});
+document.getElementById('projectImportInput').addEventListener('change',function(){
+  const file=this.files&&this.files[0];
+  if(!file) return;
+  const reader=new FileReader();
+  reader.onload=async()=>{
+    try{
+      const payload=JSON.parse(reader.result);
+      if(payload.format!=='subcleaner-workspace'||!payload.project?.data) throw new Error('不是有效的字幕工程备份');
+      const imported={
+        ...payload.project,
+        id:createProjectId(),
+        name:(payload.project.name||file.name.replace(/\.json$/i,''))+'（导入）',
+        updatedAt:Date.now()
+      };
+      const db=await openWorkspaceDb();
+      await new Promise((resolve,reject)=>{
+        const tx=db.transaction('projects','readwrite');
+        tx.objectStore('projects').put(imported);
+        tx.oncomplete=resolve; tx.onerror=()=>reject(tx.error);
+      });
+      await restoreWorkspaceRecord(imported,imported.id,imported.name);
+    }catch(e){
+      window.alert('导入失败：'+e.message);
+    }
+  };
+  reader.readAsText(file,'utf-8');
+});
+
+document.getElementById('btnRestoreHistory').addEventListener('click',async()=>{
+  const historyId=Number(document.getElementById('historySelect').value);
+  if(!historyId) return;
+  if(!window.confirm('确定恢复到所选历史版本吗？当前状态会先保存在历史记录中。')) return;
+  try{ await commitCurrentProject('恢复历史前自动保存'); }catch(e){}
+  const db=await openWorkspaceDb();
+  const tx=db.transaction('history','readonly');
+  const row=await idbRequest(tx.objectStore('history').get(historyId));
+  if(row) await restoreWorkspaceRecord({data:row.data},row.projectId,row.projectName);
+});
 
 document.getElementById('btnRestoreProgress').addEventListener('click',()=>{
   try{
@@ -2116,6 +2463,7 @@ document.getElementById('btnMergeRightOnly').addEventListener('click',()=>{
 // ----------------------------------------
 // Auto-restore settings (toggles, symbols, replacements) on load
 window.addEventListener('load', function(){
+  getActiveProjectId();
   try{ loadSettings(); }catch(e){ console.warn('loadSettings:', e); }
   try{ loadFileState(); }catch(e){ console.warn('loadFileState:', e); }
   try{ loadSplitState(); }catch(e){ console.warn('loadSplitState:', e); }
@@ -2124,12 +2472,16 @@ window.addEventListener('load', function(){
 
   const savedTab=STORE.load('currentTab','compare');
   const savedSide=STORE.load('sideTab',savedTab==='compare'?'process':'bilingual');
-  setTimeout(()=>{
+  setTimeout(async()=>{
     try{ setSideTab(savedSide); }catch(e){}
     try{ setTab(savedTab); }catch(e){}
     const btn=document.getElementById('btnRestoreProgress');
     if(btn) btn.style.display='none';
     showAutosaveStatus('✓ 已恢复并开启自动保存');
+    try{
+      await commitCurrentProject('打开项目');
+      await refreshProjectManager();
+    }catch(e){ console.warn('project manager init:',e); }
   },130);
 });
 
