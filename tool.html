@@ -425,6 +425,22 @@
   .sidebar-tab:hover:not(.active) { color:var(--text2); }
   .sidebar-panel { display:flex; flex-direction:column; gap:20px; }
   .sidebar-panel.hidden { display:none; }
+  /* 单工作台：左侧功能始终可见，不再需要在两组工具之间来回切换 */
+  .sidebar-tabs { display:none; }
+  #sidePanelProcess, #sidePanelBilingual { display:flex !important; }
+  #sidePanelProcess { padding-bottom:20px; border-bottom:1px solid var(--border); }
+  .project-card { order:-2; }
+  .process-actions { order:-1; }
+  .archive-details {
+    border-top:1px solid var(--border); padding-top:8px;
+  }
+  .archive-details summary {
+    cursor:pointer; color:var(--text2); font-size:11px; user-select:none;
+    list-style:none; display:flex; align-items:center; justify-content:space-between;
+  }
+  .archive-details summary::after { content:"＋"; color:var(--text3); }
+  .archive-details[open] summary::after { content:"−"; }
+  .archive-details-body { display:flex; flex-direction:column; gap:8px; padding-top:9px; }
 
   /* Bilingual cards */
   .bi-card {
@@ -537,12 +553,13 @@
   <div class="sidebar-panel" id="sidePanelProcess">
 
     <!-- Action buttons at top -->
-    <div style="display:flex;flex-direction:column;gap:8px;">
+    <div class="process-actions" style="display:flex;flex-direction:column;gap:8px;">
+      <div class="section-title" style="margin:0 0 2px;">字幕清理</div>
       <button class="btn btn-primary" id="btnProcess" disabled>▶ 开始处理</button>
       <button class="btn btn-green"   id="btnDownload" disabled>↓ 下载 .srt 文件</button>
     </div>
 
-    <div class="bi-card">
+    <div class="bi-card project-card">
       <div class="section-title" style="margin-bottom:7px;">工程存档</div>
       <button id="btnReset" style="display:none;" aria-hidden="true"></button>
       <div style="display:flex;gap:6px;margin-bottom:7px;">
@@ -557,24 +574,29 @@
         border-radius:6px;background:var(--bg2);color:var(--text);font-size:11px;">
         <option value="">正在读取项目列表…</option>
       </select>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:7px;">
-        <button class="btn btn-outline" id="btnExportProject" style="font-size:11px;padding:7px;">导出工程</button>
-        <button class="btn btn-outline" id="btnImportProject" style="font-size:11px;padding:7px;">导入工程</button>
-        <button class="btn btn-outline" id="btnDeleteProject"
-          style="font-size:11px;padding:7px;color:#b42318;">删除当前项目</button>
-        <button class="btn btn-outline" id="btnClearSaved"
-          style="font-size:11px;padding:7px;color:#b42318;border-color:#e8b4ae;"
-          title="删除浏览器里自动保存的全部进度">清除全部数据</button>
-        <input type="file" id="projectImportInput" accept=".json,application/json" style="display:none;">
-      </div>
-      <div class="section-title" style="margin:11px 0 7px;">历史版本（最近 20 个）</div>
-      <select id="historySelect" style="width:100%;padding:8px;border:1px solid var(--border);
-        border-radius:6px;background:var(--bg2);color:var(--text);font-size:11px;">
-        <option value="">暂无历史版本</option>
-      </select>
-      <button class="btn btn-outline" id="btnRestoreHistory"
-        style="width:100%;font-size:11px;padding:7px;margin-top:7px;">恢复所选版本</button>
-      <div id="projectStorageInfo" class="bi-info" style="margin-top:6px;">每次停止输入后自动建立版本</div>
+      <details class="archive-details">
+        <summary>项目管理与历史版本</summary>
+        <div class="archive-details-body">
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
+            <button class="btn btn-outline" id="btnExportProject" style="font-size:11px;padding:7px;">导出工程</button>
+            <button class="btn btn-outline" id="btnImportProject" style="font-size:11px;padding:7px;">导入工程</button>
+            <button class="btn btn-outline" id="btnDeleteProject"
+              style="font-size:11px;padding:7px;color:#b42318;">删除当前项目</button>
+            <button class="btn btn-outline" id="btnClearSaved"
+              style="font-size:11px;padding:7px;color:#b42318;border-color:#e8b4ae;"
+              title="删除浏览器里自动保存的全部进度">清除全部数据</button>
+            <input type="file" id="projectImportInput" accept=".json,application/json" style="display:none;">
+          </div>
+          <div class="section-title" style="margin:3px 0 0;">历史版本（最近 20 个）</div>
+          <select id="historySelect" style="width:100%;padding:8px;border:1px solid var(--border);
+            border-radius:6px;background:var(--bg2);color:var(--text);font-size:11px;">
+            <option value="">暂无历史版本</option>
+          </select>
+          <button class="btn btn-outline" id="btnRestoreHistory"
+            style="width:100%;font-size:11px;padding:7px;">恢复所选版本</button>
+          <div id="projectStorageInfo" class="bi-info">每次停止输入后自动建立版本</div>
+        </div>
+      </details>
     </div>
 
     <div>
@@ -590,6 +612,9 @@
         title="不做任何清理，仅转换格式和时间轴">⚙ 直接转格式下载（不清理）</button>
     </div>
 
+    <details class="archive-details">
+      <summary>清理规则与高级设置</summary>
+      <div class="archive-details-body">
     <div>
       <div class="section-title">处理选项</div>
       <div class="toggle-row">
@@ -670,11 +695,13 @@
       </div>
     </div>
 
+      </div>
+    </details>
 
   </div>
 
   <!-- ═ Bilingual panel ═ -->
-  <div class="sidebar-panel hidden" id="sidePanelBilingual">
+  <div class="sidebar-panel" id="sidePanelBilingual">
 
     <!-- MERGE card -->
     <div class="bi-card">
@@ -908,6 +935,7 @@ function handleFile(file){
     outputBlocks=[];outputSRT='';
     document.getElementById('btnDownload').disabled=true;
     showEmptyState();
+    setTab('compare');
     saveFileState();
   };
   reader.readAsText(file,'utf-8');
@@ -1488,6 +1516,7 @@ function handleSplitFile(file){
     document.getElementById('splitInfo').textContent=`共 ${total} 条，其中 ${dual} 条含双行`;
     document.getElementById('btnSplitLine1').disabled=false;
     document.getElementById('btnSplitLine2').disabled=false;
+    setTab('splitPreview');
     saveSplitState();
   };
   reader.readAsText(file,'utf-8');
@@ -1571,13 +1600,11 @@ _previewPanels.addEventListener('paste', handleResultPaste);
 
 // ----------------------------------------
 function setSideTab(tab){
-  const isProc = tab==='process';
-  document.getElementById('sidePanelProcess').classList.toggle('hidden',!isProc);
-  document.getElementById('sidePanelBilingual').classList.toggle('hidden',isProc);
+  // 单工作台中两组侧栏工具始终可见；这里只负责切换右侧对应预览。
+  const isProc=tab==='process';
   document.getElementById('sideTabProcess').classList.toggle('active',isProc);
   document.getElementById('sideTabBilingual').classList.toggle('active',!isProc);
-  if(!isProc && currentTab==='compare') setTab('bilingual');
-  if(isProc && currentTab!=='compare') setTab('compare');
+  setTab(isProc?'compare':'bilingual');
   STORE.save('sideTab',tab);
 }
 
@@ -1606,6 +1633,7 @@ setupBiBox('mergeJpZone','mergeJpInput',file=>{
     mergeJpBlocks=parseSRT(e.target.result);mergeRowAdj={};
     document.getElementById('mergeJpName').textContent=file.name;
     renderMergePreview();
+    setTab('bilingual');
     saveMergeState();
   };r.readAsText(file,'utf-8');
 });
@@ -1614,6 +1642,7 @@ setupBiBox('mergeCnZone','mergeCnInput',file=>{
     mergeCnBlocks=parseSRT(e.target.result);mergeRowAdj={};
     document.getElementById('mergeCnName').textContent=file.name;
     renderMergePreview();
+    setTab('bilingual');
     saveMergeState();
   };r.readAsText(file,'utf-8');
 });
