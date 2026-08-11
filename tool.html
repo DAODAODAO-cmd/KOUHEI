@@ -693,6 +693,11 @@
         <label for="mergeLimit">每条字幕最多合并行数</label>
         <input type="number" id="mergeLimit" value="2" min="1" max="10">
       </div>
+      <div class="num-row" style="margin-top:7px;">
+        <label for="mergeCharLimit">合并后最多字符数</label>
+        <input type="number" id="mergeCharLimit" value="15" min="1" max="100">
+      </div>
+      <div class="edit-hint">默认 15。合并后超过此长度时保持为两条字幕；空格不计入字符数。</div>
     </div>
 
       </div>
@@ -1031,8 +1036,28 @@ function processBlocks(blocks){
     mergesame:  document.getElementById('opt_mergesame').checked,
   };
   const mergeLimit=parseInt(document.getElementById('mergeLimit').value)||2;
+  const mergeCharLimit=parseInt(document.getElementById('mergeCharLimit').value)||15;
   const symbolChars=document.getElementById('symbolsField').value;
   const textReplace=getReplacements();
+  function prepareGroupText(items){
+    const rawJoined=items.map(b=>b.text.replace(/\{[^}]*\}/g,'').replace(/<[^>]*>/g,'').replace(/\\N/gi,' ').trim()).join(' ');
+    let text=items.map(b=>cleanText(b.text,opts,symbolChars)).join(' ');
+    text=cleanText(text,opts,symbolChars);
+    if(opts.mergeArrow) text=text.replace(/[→➡]\s*/g,'');
+    if(opts.dual){const d=handleDualSpeaker(rawJoined,text);if(d!==null) text=d;}
+    if(opts.textreplace){
+      for(const [k,v] of Object.entries(textReplace)) text=text.replaceAll(k,v);
+    }
+    if(opts.width) text=convertWidth(text);
+    if(opts.digit&&!opts.width) text=formatDigit(text);
+    return text.trim();
+  }
+  function visibleCharCount(text){
+    return Array.from(String(text||'').replace(/\s/g,'')).length;
+  }
+  function canAutoMerge(items){
+    return visibleCharCount(prepareGroupText(items))<=mergeCharLimit;
+  }
   let _mergedSameCount=0;
   const stats={merged:0,converted:0};
   const out=[];
@@ -1052,15 +1077,22 @@ function processBlocks(blocks){
         _sameEnd++;
       }
       if(_sameEnd>i){
-        // Merge text of same-timestamp group into first block
+        // Merge same-timestamp text only when the cleaned result stays within the character limit.
         const _seen=new Set();
         const _lines=[];
+        const _sameBlocks=[];
         for(let _si=i;_si<=_sameEnd;_si++){
           const _t=blocks[_si].text.trim();
-          if(_t && !_seen.has(_t)){_seen.add(_t);_lines.push(_t);}
+          if(_t && !_seen.has(_t)){
+            _seen.add(_t);_lines.push(_t);_sameBlocks.push({...blocks[_si]});
+          }
         }
-        block={...block, text:_lines.join(' ')};
-        _mergedSameCount+=_sameEnd-i;
+        if(canAutoMerge(_sameBlocks)){
+          block={...block, text:_lines.join(' ')};
+          _mergedSameCount+=_sameEnd-i;
+        }else{
+          _sameEnd=i;
+        }
       }
     }
 
@@ -1068,7 +1100,8 @@ function processBlocks(blocks){
 
     // Arrow merge: all formats
     if(opts.mergeArrow){
-      while(j<blocks.length && j<i+mergeLimit && /[→➡]\s*$/.test(group[group.length-1].text)){
+      while(j<blocks.length && j<i+mergeLimit && /[→➡]\s*$/.test(group[group.length-1].text) &&
+            canAutoMerge([...group,blocks[j]])){
         group.push({...blocks[j]});j++;
       }
     }
@@ -1091,13 +1124,17 @@ function processBlocks(blocks){
       if(matchedPair){
         const [pl,pr]=matchedPair;
         let jj=i+1;
-        // No mergeLimit for pair brackets — always search until closing bracket found
+        const pairGroup=[group[0]];
+        // Search until the closing bracket, then apply only if the merged result is short enough.
         while(jj<blocks.length){
           combined+=' '+blocks[jj].text;
-          group.push({...blocks[jj]});jj++;
+          pairGroup.push({...blocks[jj]});jj++;
           if(combined.includes(pr)) break;
         }
-        j=Math.max(j,jj);
+        if(combined.includes(pr)&&canAutoMerge(pairGroup)){
+          group=pairGroup;
+          j=Math.max(j,jj);
+        }
       }
     }
 
@@ -1981,7 +2018,7 @@ const PROJECT_DATA_KEYS=[
   'mergeJp','mergeCn','mergeOffset','mergeRowAdj','mergeJpName','mergeCnName',
   'splitBlocks','splitFileName','convBlocks','convFileNameBase','convFileName'
 ];
-const SETTINGS_DATA_KEYS=['toggles','symbols','mergeLimit','replacements'];
+const SETTINGS_DATA_KEYS=['toggles','symbols','mergeLimit','mergeCharLimit','replacements'];
 const ALL_WORKSPACE_KEYS=[...PROJECT_DATA_KEYS,...SETTINGS_DATA_KEYS];
 const WORKSPACE_DB_NAME='subcleaner_workspace_v2';
 const WORKSPACE_DB_VERSION=1;
@@ -2170,6 +2207,8 @@ function saveSettings(){
   // merge limit
   const ml=document.getElementById('mergeLimit');
   if(ml) STORE.save('mergeLimit', ml.value);
+  const mcl=document.getElementById('mergeCharLimit');
+  if(mcl) STORE.save('mergeCharLimit', mcl.value);
   queueProjectCommit('设置修改');
 }
 
@@ -2197,6 +2236,8 @@ function loadSettings(){
   // merge limit
   const ml=STORE.load('mergeLimit',null);
   if(ml!==null){ const mle=document.getElementById('mergeLimit'); if(mle) mle.value=ml; }
+  const mcl=STORE.load('mergeCharLimit',null);
+  if(mcl!==null){ const mcle=document.getElementById('mergeCharLimit'); if(mcle) mcle.value=mcl; }
   // replacements
   const rows=STORE.load('replacements',null);
   if(rows&&rows.length>0) buildReplaceTable(rows);
@@ -2210,6 +2251,8 @@ const _sf=document.getElementById('symbolsField');
 if(_sf) _sf.addEventListener('input', saveSettings);
 const _ml=document.getElementById('mergeLimit');
 if(_ml) _ml.addEventListener('change', saveSettings);
+const _mcl=document.getElementById('mergeCharLimit');
+if(_mcl) _mcl.addEventListener('change', saveSettings);
 
 // ----------------------------------------
 function saveFileState(){
