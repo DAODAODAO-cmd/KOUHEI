@@ -524,6 +524,20 @@
   }
   .mp-btn:hover { border-color:var(--accent); color:var(--accent); }
   .mp-time { font-family:'Space Mono',monospace; font-size:9px; color:var(--accent); }
+  .mp-row.active-row { background:rgba(99,85,212,0.07); box-shadow:inset 3px 0 0 var(--accent); }
+  .mp-edit.manual-edited { background:#fff4c7; border-radius:3px; padding:1px 3px; }
+  .merge-search-hit { outline:2px solid #e7a61a; outline-offset:1px; }
+  .merge-searchbar {
+    display:none; align-items:center; gap:5px; padding:6px 10px;
+    border-bottom:1px solid var(--border); background:var(--bg2); flex-shrink:0;
+  }
+  .merge-searchbar.open { display:flex; }
+  .merge-searchbar input {
+    flex:1; min-width:100px; padding:6px 8px; border:1px solid var(--border);
+    border-radius:5px; background:var(--bg3); color:var(--text); font-size:11px;
+  }
+  .merge-searchbar button { width:auto; padding:5px 8px; font-size:11px; }
+  .merge-shortcuts { font-size:9px; color:var(--text3); white-space:nowrap; }
 </style>
 </head>
 <body>
@@ -740,6 +754,13 @@
         <button class="bi-offset-btn bi-undo-btn" onclick="undoMerge()" title="撤回 Ctrl+Z">↩</button>
       </div>
       <div id="mergeInfo" class="bi-info"></div>
+      <details class="archive-details" style="padding-top:5px;">
+        <summary>键盘快捷操作</summary>
+        <div class="bi-info" style="line-height:1.8;padding-top:6px;">
+          点击一行后：Alt+↑↓ 移动右侧；Ctrl+M 合右；Ctrl+Shift+M 合双；
+          Alt+A 插入空行；Alt+D 删除空行；Alt+R 恢复当前格原文；Ctrl+F 查找。
+        </div>
+      </details>
       <button class="btn btn-outline" id="btnRestoreProgress"
         style="font-size:11px;display:none;background:rgba(99,85,212,0.06);border-color:var(--accent);color:var(--accent);">
         ↺ 恢复上次进度
@@ -831,11 +852,19 @@
           <div class="col-header" style="flex:0 0 32px;border-right:1px solid var(--border);padding:7px 0;text-align:center;">#</div>
           <div class="col-header" style="flex:1;border-right:1px solid var(--border);">📄 左侧（时间轴）</div>
           <div class="col-header" style="flex:1;border-right:1px solid var(--border);color:var(--accent2);">📄 右侧</div>
-          <div style="flex:0 0 52px;padding:4px 6px;display:flex;align-items:center;justify-content:center;">
+          <div style="flex:0 0 82px;padding:4px 6px;display:flex;align-items:center;justify-content:center;">
             <button onclick="undoMerge()" title="撤回 (Ctrl+Z)"
               style="font-size:11px;padding:3px 7px;border:1px solid var(--border);border-radius:4px;
                      background:var(--bg2);cursor:pointer;color:var(--text2);white-space:nowrap;">↩ 撤回</button>
           </div>
+        </div>
+        <div class="merge-searchbar" id="mergeSearchBar">
+          <input id="mergeSearchInput" type="search" placeholder="查找日文或中文（Ctrl+F）">
+          <span id="mergeSearchCount" class="merge-shortcuts">0/0</span>
+          <button class="btn btn-outline" id="btnMergeSearchPrev" type="button">↑</button>
+          <button class="btn btn-outline" id="btnMergeSearchNext" type="button">↓</button>
+          <button class="btn btn-outline" id="btnMergeSearchClose" type="button">关闭</button>
+          <span class="merge-shortcuts">Alt+↑↓ 移动　Ctrl+M 合右　Ctrl+Shift+M 合双　Alt+A/D 空行　Alt+R 恢复原文</span>
         </div>
         <div class="compare-scroll" id="bilingualScroll"></div>
       </div>
@@ -1659,6 +1688,7 @@ function setupBiBox(zoneId, inputId, onFile){
 
 // ----------------------------------------
 let mergeJpBlocks=[], mergeCnBlocks=[], mergeOffset=0, mergeRowAdj={};
+let activeMergeRow=0, activeMergeSide='cn', mergeSearchMatches=[], mergeSearchPos=-1;
 // mergeRowAdj: {jpIndex: cnAdjustment} per-row local offset adjustments
 
 // old setupMergeZone removed
@@ -1667,7 +1697,7 @@ let mergeJpBlocks=[], mergeCnBlocks=[], mergeOffset=0, mergeRowAdj={};
 
 setupBiBox('mergeJpZone','mergeJpInput',file=>{
   const r=new FileReader();r.onload=e=>{
-    mergeJpBlocks=parseSRT(e.target.result);mergeRowAdj={};
+    mergeJpBlocks=parseSRT(e.target.result).map(b=>({...b,_originalText:b.text}));mergeRowAdj={};
     document.getElementById('mergeJpName').textContent=file.name;
     renderMergePreview();
     setTab('bilingual');
@@ -1676,7 +1706,7 @@ setupBiBox('mergeJpZone','mergeJpInput',file=>{
 });
 setupBiBox('mergeCnZone','mergeCnInput',file=>{
   const r=new FileReader();r.onload=e=>{
-    mergeCnBlocks=parseSRT(e.target.result);mergeRowAdj={};
+    mergeCnBlocks=parseSRT(e.target.result).map(b=>({...b,_originalText:b.text}));mergeRowAdj={};
     document.getElementById('mergeCnName').textContent=file.name;
     renderMergePreview();
     setTab('bilingual');
@@ -1686,7 +1716,7 @@ setupBiBox('mergeCnZone','mergeCnInput',file=>{
 setupBiBox('splitUploadZone','splitFileInput',handleSplitFile);
 
 function makeEmptyCnBlock(){
-  return {num:0,start:'00:00:00,000',end:'00:00:00,000',text:'',style:'default',_blank:true};
+  return {num:0,start:'00:00:00,000',end:'00:00:00,000',text:'',style:'default',_blank:true,_originalText:''};
 }
 function isBlankCnBlock(block){
   return !block||!String(block.text||'').trim();
@@ -1827,9 +1857,61 @@ function undoMerge(){
   renderMergePreview();
   saveMergeState();
 }
+function selectMergeRow(index,side=activeMergeSide,scroll=false){
+  const count=Math.max(mergeJpBlocks.length,mergeCnBlocks.length);
+  if(!count) return;
+  activeMergeRow=Math.max(0,Math.min(index,count-1));
+  activeMergeSide=side||'cn';
+  document.querySelectorAll('.mp-row.active-row').forEach(row=>row.classList.remove('active-row'));
+  const row=document.querySelector(`.mp-row[data-merge-row="${activeMergeRow}"]`);
+  if(row){
+    row.classList.add('active-row');
+    if(scroll) row.scrollIntoView({block:'center',behavior:'smooth'});
+  }
+}
+
 document.addEventListener('keydown',e=>{
-  if((e.ctrlKey||e.metaKey)&&e.key==='z'&&currentTab==='bilingual'){
-    e.preventDefault();undoMerge();
+  if(currentTab!=='bilingual') return;
+  const editing=!!(e.target.closest&&e.target.closest('[contenteditable="true"]'));
+  const typingField=editing||!!(e.target.matches&&e.target.matches('input,textarea,select'));
+  const key=e.key.toLowerCase();
+  if((e.ctrlKey||e.metaKey)&&key==='f'){
+    e.preventDefault();openMergeSearch();return;
+  }
+  if(editing){
+    if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.target.blur();}
+    else if(e.key==='Escape'){e.preventDefault();e.target.blur();}
+    else return;
+  }
+  if(typingField) return;
+  if((e.ctrlKey||e.metaKey)&&key==='z'){
+    e.preventDefault();undoMerge();return;
+  }
+  if((e.ctrlKey||e.metaKey)&&key==='m'){
+    e.preventDefault();
+    if(e.shiftKey) mergeBothUpRow(activeMergeRow); else mergeUpRow(activeMergeRow);
+    return;
+  }
+  if(e.altKey&&e.key==='ArrowUp'){
+    e.preventDefault();adjustRow(activeMergeRow,-1);selectMergeRow(activeMergeRow-1,'cn',true);return;
+  }
+  if(e.altKey&&e.key==='ArrowDown'){
+    e.preventDefault();adjustRow(activeMergeRow,+1);selectMergeRow(activeMergeRow+1,'cn',true);return;
+  }
+  if(e.altKey&&key==='a'){
+    e.preventDefault();insertBlankRow(activeMergeRow);selectMergeRow(activeMergeRow,'cn',true);return;
+  }
+  if(e.altKey&&key==='d'){
+    e.preventDefault();removeBlankRow(activeMergeRow);selectMergeRow(activeMergeRow,'cn',true);return;
+  }
+  if(e.altKey&&key==='r'){
+    e.preventDefault();restoreMergeOriginal(activeMergeRow,activeMergeSide);return;
+  }
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key==='ArrowUp'){
+    e.preventDefault();selectMergeRow(activeMergeRow-1,activeMergeSide,true);return;
+  }
+  if(!e.ctrlKey&&!e.metaKey&&!e.altKey&&e.key==='ArrowDown'){
+    e.preventDefault();selectMergeRow(activeMergeRow+1,activeMergeSide,true);
   }
 });
 
@@ -1837,16 +1919,32 @@ function saveMergeEdit(el){
   const idx=parseInt(el.dataset.idx);
   const type=el.dataset.type;
   const val=el.innerText.trim();
-  if(type==='jp'&&mergeJpBlocks[idx]) mergeJpBlocks[idx].text=val;
+  if(type==='jp'&&mergeJpBlocks[idx]){
+    if(mergeJpBlocks[idx]._originalText===undefined) mergeJpBlocks[idx]._originalText=mergeJpBlocks[idx].text;
+    mergeJpBlocks[idx].text=val;
+  }
   if(type==='cn'){
     const ci=getCnForJp(idx);
     if(ci>=0){
       ensureCnIndex(ci);
+      if(mergeCnBlocks[ci]._originalText===undefined) mergeCnBlocks[ci]._originalText=mergeCnBlocks[ci].text;
       mergeCnBlocks[ci].text=val;
       mergeCnBlocks[ci]._blank=!val;
     }
   }
+  el.classList.toggle('manual-edited',val!==String((type==='jp'?mergeJpBlocks[idx]:mergeCnBlocks[idx])?._originalText||''));
   queueMergeStateSave();
+}
+
+function restoreMergeOriginal(index,type){
+  const block=type==='jp'?mergeJpBlocks[index]:mergeCnBlocks[index];
+  if(!block||block._originalText===undefined||block.text===block._originalText) return;
+  pushUndo();
+  block.text=block._originalText;
+  if(type==='cn') block._blank=!block.text;
+  renderMergePreview();
+  saveMergeState();
+  setLog('ok','已恢复第 '+(index+1)+' 行'+(type==='jp'?'左侧':'右侧')+'原文');
 }
 
 function mergeUpRow(i){
@@ -1858,11 +1956,15 @@ function mergeUpRow(i){
   ensureCnIndex(i-1);
   const current=mergeCnBlocks[i];
   const previous=mergeCnBlocks[i-1];
+  const previousOriginal=previous._originalText===undefined?previous.text:previous._originalText;
+  const currentOriginal=current._originalText===undefined?current.text:current._originalText;
   previous.text=((previous.text||'')+' '+(current.text||'')).trim();
+  previous._originalText=((previousOriginal||'')+' '+(currentOriginal||'')).trim();
   previous.end=current.end||previous.end;
   previous._blank=false;
   // 右侧少了一条，后续右侧字幕自然上移一位。
   mergeCnBlocks.splice(i,1);
+  activeMergeRow=i-1;activeMergeSide='cn';
   renderMergePreview();
   saveMergeState();
   setLog('ok','已将右侧第 '+(i+1)+' 句合并到第 '+i+' 句');
@@ -1874,22 +1976,79 @@ function mergeBothUpRow(i){
   // 左右文字分别合并；左侧主时间轴延长到当前句的结束时间。
   const jpCurrent=mergeJpBlocks[i];
   const jpPrevious=mergeJpBlocks[i-1];
+  const jpPreviousOriginal=jpPrevious._originalText===undefined?jpPrevious.text:jpPrevious._originalText;
+  const jpCurrentOriginal=jpCurrent._originalText===undefined?jpCurrent.text:jpCurrent._originalText;
   jpPrevious.text=((jpPrevious.text||'')+' '+(jpCurrent.text||'')).trim();
+  jpPrevious._originalText=((jpPreviousOriginal||'')+' '+(jpCurrentOriginal||'')).trim();
   jpPrevious.end=jpCurrent.end||jpPrevious.end;
   mergeJpBlocks.splice(i,1);
   if(i<mergeCnBlocks.length){
     ensureCnIndex(i-1);
     const cnCurrent=mergeCnBlocks[i];
     const cnPrevious=mergeCnBlocks[i-1];
+    const cnPreviousOriginal=cnPrevious._originalText===undefined?cnPrevious.text:cnPrevious._originalText;
+    const cnCurrentOriginal=cnCurrent._originalText===undefined?cnCurrent.text:cnCurrent._originalText;
     cnPrevious.text=((cnPrevious.text||'')+' '+(cnCurrent.text||'')).trim();
+    cnPrevious._originalText=((cnPreviousOriginal||'')+' '+(cnCurrentOriginal||'')).trim();
     cnPrevious.end=cnCurrent.end||cnPrevious.end;
     cnPrevious._blank=isBlankCnBlock(cnPrevious);
     mergeCnBlocks.splice(i,1);
   }
+  activeMergeRow=i-1;
   renderMergePreview();
   saveMergeState();
   setLog('ok','已将左右第 '+(i+1)+' 行一起合并到上一行');
 }
+
+function openMergeSearch(){
+  const bar=document.getElementById('mergeSearchBar');
+  bar.classList.add('open');
+  const input=document.getElementById('mergeSearchInput');
+  input.focus(); input.select();
+  updateMergeSearch();
+}
+function closeMergeSearch(){
+  document.getElementById('mergeSearchBar').classList.remove('open');
+  document.querySelectorAll('.merge-search-hit').forEach(el=>el.classList.remove('merge-search-hit'));
+  mergeSearchMatches=[];mergeSearchPos=-1;
+}
+function updateMergeSearch(){
+  const query=document.getElementById('mergeSearchInput').value.trim().toLocaleLowerCase();
+  mergeSearchMatches=[];mergeSearchPos=-1;
+  document.querySelectorAll('.merge-search-hit').forEach(el=>el.classList.remove('merge-search-hit'));
+  if(query){
+    const count=Math.max(mergeJpBlocks.length,mergeCnBlocks.length);
+    for(let i=0;i<count;i++){
+      if(String(mergeJpBlocks[i]?.text||'').toLocaleLowerCase().includes(query)) mergeSearchMatches.push({row:i,side:'jp'});
+      if(String(mergeCnBlocks[i]?.text||'').toLocaleLowerCase().includes(query)) mergeSearchMatches.push({row:i,side:'cn'});
+    }
+  }
+  if(mergeSearchMatches.length){mergeSearchPos=0;showMergeSearchMatch();}
+  else document.getElementById('mergeSearchCount').textContent='0/0';
+}
+function showMergeSearchMatch(){
+  document.querySelectorAll('.merge-search-hit').forEach(el=>el.classList.remove('merge-search-hit'));
+  if(!mergeSearchMatches.length){document.getElementById('mergeSearchCount').textContent='0/0';return;}
+  const hit=mergeSearchMatches[mergeSearchPos];
+  selectMergeRow(hit.row,hit.side,true);
+  const el=document.querySelector(`.mp-edit[data-type="${hit.side}"][data-idx="${hit.row}"]`);
+  if(el) el.classList.add('merge-search-hit');
+  document.getElementById('mergeSearchCount').textContent=(mergeSearchPos+1)+'/'+mergeSearchMatches.length;
+}
+function moveMergeSearch(delta){
+  if(!mergeSearchMatches.length){updateMergeSearch();return;}
+  mergeSearchPos=(mergeSearchPos+delta+mergeSearchMatches.length)%mergeSearchMatches.length;
+  showMergeSearchMatch();
+}
+
+document.getElementById('mergeSearchInput').addEventListener('input',updateMergeSearch);
+document.getElementById('mergeSearchInput').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){e.preventDefault();moveMergeSearch(e.shiftKey?-1:1);}
+  if(e.key==='Escape'){e.preventDefault();closeMergeSearch();}
+});
+document.getElementById('btnMergeSearchPrev').addEventListener('click',()=>moveMergeSearch(-1));
+document.getElementById('btnMergeSearchNext').addEventListener('click',()=>moveMergeSearch(1));
+document.getElementById('btnMergeSearchClose').addEventListener('click',closeMergeSearch);
 
 function renderMergePreview(){
   const info=document.getElementById('mergeInfo');
@@ -1902,17 +2061,19 @@ function renderMergePreview(){
     const cn=(ci>=0 && ci<mergeCnBlocks.length)?mergeCnBlocks[ci]:null;
     const cnText=cn?(cn.text||''):'';
     const cnClass=isBlankCnBlock(cn)?'mp-cn empty':'mp-cn';
+    const jpEdited=jp&&jp._originalText!==undefined&&jp.text!==jp._originalText;
+    const cnEdited=cn&&cn._originalText!==undefined&&cn.text!==cn._originalText;
     const jpCell=jp
       ? `<div class="mp-time">${jp.start.slice(0,8)}</div>
-         <div class="mp-edit" contenteditable="true" data-type="jp" data-idx="${i}" onblur="saveMergeEdit(this)">${escHtml(jp.text)}</div>`
+         <div class="mp-edit${jpEdited?' manual-edited':''}" contenteditable="true" data-type="jp" data-idx="${i}" onblur="saveMergeEdit(this)" title="${jpEdited?'已修改，Alt+R 恢复原文':'点击修改日文'}">${escHtml(jp.text)}</div>`
       : `<div class="mp-time">未匹配</div><div style="color:var(--text3);">— 左侧无对应行 —</div>`;
-    return `<div class="mp-row">
+    return `<div class="mp-row${i===activeMergeRow?' active-row':''}" data-merge-row="${i}">
       <div class="mp-idx">${i+1}</div>
       <div class="mp-jp">
         ${jpCell}
       </div>
       <div class="${cnClass}">
-        <div class="mp-edit" contenteditable="true" data-type="cn" data-idx="${i}" onblur="saveMergeEdit(this)">${escHtml(cnText)}</div>
+        <div class="mp-edit${cnEdited?' manual-edited':''}" contenteditable="true" data-type="cn" data-idx="${i}" onblur="saveMergeEdit(this)" title="${cnEdited?'已修改，Alt+R 恢复原文':'点击修改中文'}">${escHtml(cnText)}</div>
       </div>
       <div class="mp-btns">
         <button class="mp-btn" onclick="adjustRow(${i},-1)" title="右侧本句与上一句交换">↑</button>
@@ -1927,6 +2088,7 @@ function renderMergePreview(){
 
   const scroller=document.getElementById('bilingualScroll');
   if(scroller) scroller.innerHTML=rows;
+  if(document.getElementById('mergeSearchBar').classList.contains('open')) updateMergeSearch();
 
   let matched=0;
   for(let i=0;i<Math.min(mergeJpBlocks.length,mergeCnBlocks.length);i++){
@@ -1938,6 +2100,17 @@ function renderMergePreview(){
   const _lob=document.getElementById('btnMergeRightOnly');
   if(_lob) _lob.disabled=!(mergeJpBlocks.length>0);
 }
+
+document.getElementById('bilingualScroll').addEventListener('pointerdown',e=>{
+  const row=e.target.closest('.mp-row');
+  if(!row) return;
+  const edit=e.target.closest('.mp-edit');
+  selectMergeRow(parseInt(row.dataset.mergeRow,10),edit?.dataset.type||activeMergeSide,false);
+});
+document.getElementById('bilingualScroll').addEventListener('focusin',e=>{
+  const edit=e.target.closest('.mp-edit');
+  if(edit) selectMergeRow(parseInt(edit.dataset.idx,10),edit.dataset.type,false);
+});
 
 document.getElementById('btnMergeDownload').addEventListener('click',()=>{
   if(!mergeJpBlocks.length) return;
@@ -2342,9 +2515,9 @@ function loadConverterState(){
 // ----------------------------------------
 function saveMergeState(){
   try{
-    // Only save text content to minimize storage size
-    const jpMin=mergeJpBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text}));
-    const cnMin=mergeCnBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text}));
+    // Preserve original text as well, so edited cells can be marked and restored later.
+    const jpMin=mergeJpBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text,_originalText:b._originalText??b.text}));
+    const cnMin=mergeCnBlocks.map(b=>({num:b.num,start:b.start,end:b.end,text:b.text,_originalText:b._originalText??b.text,_blank:!!b._blank}));
     STORE.save('mergeJp', jpMin);
     STORE.save('mergeCn', cnMin);
     STORE.save('mergeOffset', mergeOffset);
@@ -2359,8 +2532,8 @@ function loadMergeState(activate=true){
   const jp=STORE.load('mergeJp',[]);
   const cn=STORE.load('mergeCn',[]);
   if(!jp.length) return;
-  mergeJpBlocks=jp;
-  mergeCnBlocks=cn;
+  mergeJpBlocks=jp.map(b=>({...b,_originalText:b._originalText??b.text}));
+  mergeCnBlocks=cn.map(b=>({...b,_originalText:b._originalText??b.text}));
   mergeOffset=STORE.load('mergeOffset',0);
   mergeRowAdj=STORE.load('mergeRowAdj',{});
   const od=document.getElementById('offsetDisplay');
