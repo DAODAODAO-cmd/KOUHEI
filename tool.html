@@ -3,8 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>恶役字幕组 · 字幕清理器</title>
-<link rel="icon" type="image/png" href="LOGO.png">
+<title>恶役字幕组 专属字幕清理器</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@300;400;500;700&family=Space+Mono:wght@400;700&display=swap');
 
@@ -728,8 +727,8 @@
         <label class="toggle"><input type="checkbox" id="opt_textreplace" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
       <div class="toggle-row">
-        <span class="toggle-label">相同时间戳字幕合并为一行</span>
-        <label class="toggle"><input type="checkbox" id="opt_mergesame"><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+        <span class="toggle-label">相同起止时间自动合并（固定开启）</span>
+        <label class="toggle"><input type="checkbox" id="opt_mergesame" checked disabled><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
       <div class="section-title" style="margin-top:14px;">额外输出功能</div>
       <div class="toggle-row">
@@ -1532,7 +1531,9 @@ function processBlocks(blocks){
     dual:       document.getElementById('opt_dual').checked,
     digit:      document.getElementById('opt_digit').checked,
     textreplace:document.getElementById('opt_textreplace').checked,
-    mergesame:  document.getElementById('opt_mergesame').checked,
+    // Exact same start + end time is always one subtitle cue. This is separate
+    // from arrow continuation and is therefore not controlled by the 20-char limit.
+    mergesame:  true,
     jpSmartSplit:document.getElementById('opt_jp_smart_split')?.checked!==false,
   };
   const mergeLimit=parseInt(document.getElementById('mergeLimit').value)||2;
@@ -1586,6 +1587,7 @@ function processBlocks(blocks){
   while(i<blocks.length){
     let block={...blocks[i]};
     let preserveCompletePair=false;
+    let preserveSameTimestamp=false;
     if(opts.rubi && block.style==='rubi'){srcMap[i]=null;i++;continue;}
 
     // Same-timestamp merge: collect all blocks with identical start+end
@@ -1597,7 +1599,8 @@ function processBlocks(blocks){
         _sameEnd++;
       }
       if(_sameEnd>i){
-        // Merge same-timestamp text only when the cleaned result stays within the character limit.
+        // Identical time ranges represent one cue. Merge unique text regardless
+        // of the arrow length setting, and keep it as a single output block.
         const _seen=new Set();
         const _lines=[];
         const _sameBlocks=[];
@@ -1608,12 +1611,9 @@ function processBlocks(blocks){
           }
         }
         preserveCompletePair=opts.mergePair&&completesCrossLinePair(_sameBlocks);
-        if(canAutoMerge(_sameBlocks)||preserveCompletePair){
-          block={...block, text:_lines.join(preserveCompletePair?'':' ')};
-          _mergedSameCount+=_sameEnd-i;
-        }else{
-          _sameEnd=i;
-        }
+        preserveSameTimestamp=true;
+        block={...block, text:_lines.join(' ')};
+        _mergedSameCount+=_sameEnd-i;
       }
     }
 
@@ -1653,7 +1653,7 @@ function processBlocks(blocks){
     if(group.length>1) stats.merged+=group.length;
 
     // Split group into chunks of mergeLimit, each chunk becomes one output block
-    const _limit = preserveCompletePair ? group.length : (mergeLimit > 0 ? mergeLimit : group.length);
+    const _limit = (preserveCompletePair||preserveSameTimestamp) ? group.length : (mergeLimit > 0 ? mergeLimit : group.length);
     for(let ci=0; ci<group.length; ci+=_limit){
       const chunk = group.slice(ci, ci+_limit);
       const chunkStart = i + ci;
@@ -1688,7 +1688,7 @@ function processBlocks(blocks){
         _srcEnd:(_sameEnd>i&&group.length===1)?_sameEnd:chunkEnd,
       };
       let splitParts=[text];
-      if(opts.jpSmartSplit&&!preserveCompletePair){
+      if(opts.jpSmartSplit&&!preserveCompletePair&&!preserveSameTimestamp){
         // Use a punctuation-preserving copy to decide the cut points. The normal
         // symbol cleanup may remove 。、 etc., but those marks still guide splitting.
         const guideOpts={...opts,symbols:false};
@@ -2979,7 +2979,7 @@ function saveSettings(){
   const toggles={};
   ['opt_width','opt_symbols','opt_speaker','opt_rubi','opt_comments',
    'opt_merge_pair','opt_merge_arrow','opt_dual','opt_digit','opt_textreplace',
-   'opt_mergesame','opt_srt_blank2','opt_jp_smart_split'].forEach(id=>{
+   'opt_srt_blank2','opt_jp_smart_split'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) toggles[id]=el.checked;
   });
@@ -3013,6 +3013,8 @@ function loadSettings(){
     const el=document.getElementById(id);
     if(el) el.checked=val;
   });
+  const sameToggle=document.getElementById('opt_mergesame');
+  if(sameToggle) sameToggle.checked=true;
   // symbols
   const sym=STORE.load('symbols',null);
   if(sym!==null){ const sf=document.getElementById('symbolsField'); if(sf) sf.value=sym; }
