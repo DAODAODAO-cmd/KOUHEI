@@ -711,7 +711,7 @@
         <label class="toggle"><input type="checkbox" id="opt_merge_pair" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
       <div class="toggle-row">
-        <span class="toggle-label">合并箭头结尾行（→ ➡）</span>
+        <span class="toggle-label">➡/→ 行作为起头，只向下合并</span>
         <label class="toggle"><input type="checkbox" id="opt_merge_arrow" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
       <div class="toggle-row">
@@ -1544,7 +1544,7 @@ function processBlocks(blocks){
     const rawJoined=items.map(b=>b.text.replace(/\{[^}]*\}/g,'').replace(/<[^>]*>/g,'').replace(/\\N/gi,' ').trim()).join(' ');
     let text=items.map(b=>cleanText(b.text,opts,symbolChars)).join(' ');
     text=cleanText(text,opts,symbolChars);
-    if(opts.mergeArrow) text=text.replace(/[→➡]\s*/g,'');
+    if(opts.mergeArrow) text=text.replace(/\s*[→➡]\s*/g,' ');
     if(opts.dual){const d=handleDualSpeaker(rawJoined,text);if(d!==null) text=d;}
     if(opts.textreplace){
       for(const [k,v] of Object.entries(textReplace)) text=text.replaceAll(k,v);
@@ -1582,20 +1582,29 @@ function processBlocks(blocks){
   const stats={merged:0,converted:0,smartSplit:0};
   const out=[];
   const srcMap={};  // originalIndex -> outBlock (or null if deleted/skipped)
+  const arrowContinuationIndices=new Set();
+  for(let ai=0;ai+1<blocks.length;ai++){
+    if(endsWithMergeArrow(blocks[ai].text)&&!endsWithMergeArrow(blocks[ai+1].text)){
+      arrowContinuationIndices.add(ai+1);
+    }
+  }
   let i=0;
 
   while(i<blocks.length){
     let block={...blocks[i]};
     let preserveCompletePair=false;
     let preserveSameTimestamp=false;
+    const startsArrowGroup=endsWithMergeArrow(block.text);
+    const continuesArrowGroup=arrowContinuationIndices.has(i);
     if(opts.rubi && block.style==='rubi'){srcMap[i]=null;i++;continue;}
 
     // Same-timestamp merge: collect all blocks with identical start+end
     let _sameEnd=i;
-    if(opts.mergesame){
+    if(opts.mergesame&&!startsArrowGroup&&!continuesArrowGroup){
       while(_sameEnd+1<blocks.length &&
             blocks[_sameEnd+1].start===block.start &&
-            blocks[_sameEnd+1].end===block.end){
+            blocks[_sameEnd+1].end===block.end &&
+            !endsWithMergeArrow(blocks[_sameEnd+1].text)){
         _sameEnd++;
       }
       if(_sameEnd>i){
@@ -1606,14 +1615,16 @@ function processBlocks(blocks){
         const _sameBlocks=[];
         for(let _si=i;_si<=_sameEnd;_si++){
           const _t=blocks[_si].text.trim();
-          if(_t && !_seen.has(_t)){
-            _seen.add(_t);_lines.push(_t);_sameBlocks.push({...blocks[_si]});
+          const _cleanKey=prepareGroupText([{...blocks[_si]}]);
+          if(_cleanKey && !_seen.has(_cleanKey)){
+            _seen.add(_cleanKey);_lines.push(_t);_sameBlocks.push({...blocks[_si]});
           }
         }
         preserveCompletePair=opts.mergePair&&completesCrossLinePair(_sameBlocks);
         preserveSameTimestamp=true;
         block={...block, text:_lines.join(' ')};
         _mergedSameCount+=_sameEnd-i;
+        stats.merged+=_sameEnd-i+1;
       }
     }
 
@@ -1622,13 +1633,14 @@ function processBlocks(blocks){
     // Arrow merge: all formats
     if(opts.mergeArrow){
       while(j<blocks.length && j<i+mergeLimit && endsWithMergeArrow(group[group.length-1].text) &&
+            !endsWithMergeArrow(blocks[j].text) &&
             canAutoMerge([...group,blocks[j]])){
         group.push({...blocks[j]});j++;
       }
     }
 
     // Pair bracket merge: all formats, supports multi-char tokens like (( ))
-    if(opts.mergePair && group.length===1){
+    if(opts.mergePair && group.length===1&&!continuesArrowGroup){
       let combined=group[0].text;
       let matchedPair=null;
       for(const [l,r] of STRUCTURE_PAIRS){
@@ -1642,7 +1654,7 @@ function processBlocks(blocks){
         const pairGroup=next?[group[0],{...next}]:[group[0]];
         // Only the immediately following row may complete the pair. This keeps
         // the useful two-row repair without ever turning a 3+ row passage into one line.
-        if(next&&String(next.text||'').includes(pr)){
+        if(next&&!endsWithMergeArrow(next.text)&&String(next.text||'').includes(pr)){
           group=pairGroup;
           j=Math.max(j,i+2);
           preserveCompletePair=true;
@@ -1664,7 +1676,7 @@ function processBlocks(blocks){
       let rawJoined=chunk.map(b=>b.text.replace(/\{[^}]*\}/g,'').replace(/<[^>]*>/g,'').replace(/\\N/gi,' ').trim()).join(chunkJoiner);
       let text=chunk.map(b=>cleanText(b.text,opts,symbolChars)).join(chunkJoiner);
       text=cleanText(text,opts,symbolChars);
-      if(opts.mergeArrow) text=text.replace(/[→➡]\s*/g,'');
+      if(opts.mergeArrow) text=text.replace(/\s*[→➡]\s*/g,' ');
 
       if(opts.dual){const d=handleDualSpeaker(rawJoined,text);if(d!==null) text=d;}
 
@@ -1694,7 +1706,7 @@ function processBlocks(blocks){
         const guideOpts={...opts,symbols:false};
         let guideText=chunk.map(b=>cleanText(b.text,guideOpts,symbolChars)).join(chunkJoiner);
         guideText=cleanText(guideText,guideOpts,symbolChars);
-        if(opts.mergeArrow) guideText=guideText.replace(/[→➡]\s*/g,'');
+        if(opts.mergeArrow) guideText=guideText.replace(/\s*[→➡]\s*/g,' ');
         if(opts.dual){const d=handleDualSpeaker(rawJoined,guideText);if(d!==null) guideText=d;}
         if(opts.textreplace){for(const [k,v] of Object.entries(textReplace)) guideText=guideText.replaceAll(k,v);}
         if(opts.width) guideText=convertWidth(guideText);
