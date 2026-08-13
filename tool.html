@@ -281,7 +281,7 @@
   }
 
   /* each paired row */
-  .cmp-row {
+.cmp-row {
     display: grid; grid-template-columns: 1fr 1fr;
     border-bottom: 1px solid var(--bg3);
   }
@@ -562,6 +562,7 @@
   .auth-account-row { display:flex; align-items:center; gap:7px; padding:8px 9px; background:var(--bg3); border-radius:6px; font-size:11px; }
   .auth-account-row span { flex:1; }
   .auth-note { font-size:9px !important; color:var(--text3); margin:8px 0 0 !important; }
+.cmp-row.quality-active .cmp-cell { background:#fff4c7 !important; }
 </style>
 </head>
 <body>
@@ -625,6 +626,7 @@
     <div class="process-actions" style="display:flex;flex-direction:column;gap:8px;">
       <div class="section-title" style="margin:0 0 2px;">字幕清理</div>
       <button class="btn btn-primary" id="btnProcess" disabled>▶ 开始处理</button>
+      <button class="btn btn-outline" id="btnQualityCheck" disabled>⚠ 字幕质量检查</button>
       <button class="btn btn-green"   id="btnDownload" disabled>↓ 下载 .srt 文件</button>
     </div>
 
@@ -707,14 +709,6 @@
         <label class="toggle"><input type="checkbox" id="opt_comments" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
       <div class="toggle-row">
-        <span class="toggle-label">合并成对括号跨行（《…》等）</span>
-        <label class="toggle"><input type="checkbox" id="opt_merge_pair" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-      </div>
-      <div class="toggle-row">
-        <span class="toggle-label">➡/→ 行作为起头，只向下合并</span>
-        <label class="toggle"><input type="checkbox" id="opt_merge_arrow" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-      </div>
-      <div class="toggle-row">
         <span class="toggle-label">双人对话 → -台词1　　-台词2</span>
         <label class="toggle"><input type="checkbox" id="opt_dual" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
@@ -725,10 +719,6 @@
       <div class="toggle-row">
         <span class="toggle-label">常用词替换（见下方列表）</span>
         <label class="toggle"><input type="checkbox" id="opt_textreplace" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-      </div>
-      <div class="toggle-row">
-        <span class="toggle-label">相同起止时间自动合并（固定开启）</span>
-        <label class="toggle"><input type="checkbox" id="opt_mergesame" checked disabled><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
       <div class="section-title" style="margin-top:14px;">额外输出功能</div>
       <div class="toggle-row">
@@ -755,22 +745,19 @@
       <button class="add-row-btn" id="addReplaceRow">＋ 添加一行</button>
     </div>
 
-    <!-- Merge limit -->
+    <!-- Complete, independent merge rules -->
     <div>
-      <div class="section-title">合并参数</div>
-      <div class="num-row">
-        <label for="mergeLimit">每条字幕最多合并行数</label>
-        <input type="number" id="mergeLimit" value="2" min="1" max="10">
-      </div>
-      <div class="num-row" style="margin-top:7px;">
-        <label for="mergeCharLimit">日文每句 / 合并最多字符</label>
-        <input type="number" id="mergeCharLimit" value="20" min="1" max="100">
-      </div>
+      <div class="section-title">合并与智能长度</div>
+      <div class="toggle-row"><span class="toggle-label">相同起止时间自动合并（固定）</span><label class="toggle"><input type="checkbox" id="opt_mergesame" checked disabled><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+      <div class="edit-hint">相同时间直接合并，不受长度限制；遇到箭头组会停止。</div>
+      <div class="toggle-row" style="margin-top:12px;"><span class="toggle-label">➡/→ 行作为组首，只向下合并</span><label class="toggle"><input type="checkbox" id="opt_merge_arrow" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+      <div class="toggle-row" style="margin-top:12px;"><span class="toggle-label">成对括号跨行（《…》等）</span><label class="toggle"><input type="checkbox" id="opt_merge_pair" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
       <div class="option-row" style="margin-top:8px;">
         <div><div class="option-name">日文超长时智能分段</div><div class="option-desc">优先按句号、问号、逗号和自然停顿拆分</div></div>
         <label class="toggle"><input type="checkbox" id="opt_jp_smart_split" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
       </div>
-      <div class="edit-hint">默认 20，主要控制 ➡/→ 续句合并。只计算文字和数字；空格、标点、括号、箭头等符号均不计数。</div>
+      <div class="num-row" style="margin-top:6px;"><label for="smartLengthLimit">统一智能长度上限</label><input type="number" id="smartLengthLimit" value="20" min="1" max="100"></div>
+      <div class="edit-hint">箭头与括号只尝试合并相邻两行，合计不超过此长度才合并；智能分段也使用同一长度。只数文字和数字，不数标点与符号。</div>
     </div>
 
       </div>
@@ -1335,6 +1322,7 @@ function handleFile(file){
     document.getElementById('btnProcess').disabled=false;
     outputBlocks=[];outputSRT='';
     document.getElementById('btnDownload').disabled=true;
+    document.getElementById('btnQualityCheck').disabled=true;
     showEmptyState();
     setTab('compare');
     saveFileState();
@@ -1519,7 +1507,7 @@ function splitTimedBlock(block,segments){
 }
 
 // ----------------------------------------
-function processBlocks(blocks){
+function processBlocksLegacy(blocks){
   const opts={
     width:      document.getElementById('opt_width').checked,
     symbols:    document.getElementById('opt_symbols').checked,
@@ -1544,7 +1532,7 @@ function processBlocks(blocks){
     const rawJoined=items.map(b=>b.text.replace(/\{[^}]*\}/g,'').replace(/<[^>]*>/g,'').replace(/\\N/gi,' ').trim()).join(' ');
     let text=items.map(b=>cleanText(b.text,opts,symbolChars)).join(' ');
     text=cleanText(text,opts,symbolChars);
-    if(opts.mergeArrow) text=text.replace(/\s*[→➡]\s*/g,' ');
+    if(opts.mergeArrow) text=text.replace(/\s*[→➡➜➝➞➟➠⟶⟹⇒]\s*/g,' ');
     if(opts.dual){const d=handleDualSpeaker(rawJoined,text);if(d!==null) text=d;}
     if(opts.textreplace){
       for(const [k,v] of Object.entries(textReplace)) text=text.replaceAll(k,v);
@@ -1561,8 +1549,9 @@ function processBlocks(blocks){
     const plain=String(text||'')
       .replace(/<[^>]*>/g,'')
       .replace(/\{[^}]*\}/g,'')
+      .replace(/[\u200B-\u200D\u2060\uFEFF]/g,'')
       .trim();
-    return /[→➡]\s*$/.test(plain);
+    return /[→➡➜➝➞➟➠⟶⟹⇒]\s*$/.test(plain);
   }
   const STRUCTURE_PAIRS=[
     ['《','》'],['＜','＞'],['〈','〉'],
@@ -1632,7 +1621,9 @@ function processBlocks(blocks){
 
     // Arrow merge: all formats
     if(opts.mergeArrow){
-      while(j<blocks.length && j<i+mergeLimit && endsWithMergeArrow(group[group.length-1].text) &&
+      // An arrow row always owns the immediately following row. The pair is
+      // governed by the 20-character rule, not by the generic row-count setting.
+      while(j<blocks.length && endsWithMergeArrow(group[group.length-1].text) &&
             !endsWithMergeArrow(blocks[j].text) &&
             canAutoMerge([...group,blocks[j]])){
         group.push({...blocks[j]});j++;
@@ -1665,7 +1656,8 @@ function processBlocks(blocks){
     if(group.length>1) stats.merged+=group.length;
 
     // Split group into chunks of mergeLimit, each chunk becomes one output block
-    const _limit = (preserveCompletePair||preserveSameTimestamp) ? group.length : (mergeLimit > 0 ? mergeLimit : group.length);
+    const preserveArrowPair=startsArrowGroup&&group.length>1;
+    const _limit = (preserveCompletePair||preserveSameTimestamp||preserveArrowPair) ? group.length : (mergeLimit > 0 ? mergeLimit : group.length);
     for(let ci=0; ci<group.length; ci+=_limit){
       const chunk = group.slice(ci, ci+_limit);
       const chunkStart = i + ci;
@@ -1676,7 +1668,7 @@ function processBlocks(blocks){
       let rawJoined=chunk.map(b=>b.text.replace(/\{[^}]*\}/g,'').replace(/<[^>]*>/g,'').replace(/\\N/gi,' ').trim()).join(chunkJoiner);
       let text=chunk.map(b=>cleanText(b.text,opts,symbolChars)).join(chunkJoiner);
       text=cleanText(text,opts,symbolChars);
-      if(opts.mergeArrow) text=text.replace(/\s*[→➡]\s*/g,' ');
+      if(opts.mergeArrow) text=text.replace(/\s*[→➡➜➝➞➟➠⟶⟹⇒]\s*/g,' ');
 
       if(opts.dual){const d=handleDualSpeaker(rawJoined,text);if(d!==null) text=d;}
 
@@ -1706,7 +1698,7 @@ function processBlocks(blocks){
         const guideOpts={...opts,symbols:false};
         let guideText=chunk.map(b=>cleanText(b.text,guideOpts,symbolChars)).join(chunkJoiner);
         guideText=cleanText(guideText,guideOpts,symbolChars);
-        if(opts.mergeArrow) guideText=guideText.replace(/\s*[→➡]\s*/g,' ');
+        if(opts.mergeArrow) guideText=guideText.replace(/\s*[→➡➜➝➞➟➠⟶⟹⇒]\s*/g,' ');
         if(opts.dual){const d=handleDualSpeaker(rawJoined,guideText);if(d!==null) guideText=d;}
         if(opts.textreplace){for(const [k,v] of Object.entries(textReplace)) guideText=guideText.replaceAll(k,v);}
         if(opts.width) guideText=convertWidth(guideText);
@@ -1735,6 +1727,146 @@ function processBlocks(blocks){
     i=Math.max(j,_sameEnd+1);
   }
   return{blocks:out,stats,srcMap,inputBlocks:blocks,mergedSameCount:_mergedSameCount};
+}
+
+// Deterministic merge engine: ordinary subtitles never merge. Exact-time rows
+// always merge; arrow/pair merges and smart splitting share one length limit.
+function processBlocks(blocks){
+  const opts={
+    width:document.getElementById('opt_width').checked,
+    symbols:document.getElementById('opt_symbols').checked,
+    speaker:document.getElementById('opt_speaker').checked,
+    rubi:document.getElementById('opt_rubi').checked,
+    comments:document.getElementById('opt_comments').checked,
+    mergePair:document.getElementById('opt_merge_pair').checked,
+    mergeArrow:document.getElementById('opt_merge_arrow').checked,
+    mergeSame:true,
+    dual:document.getElementById('opt_dual').checked,
+    digit:document.getElementById('opt_digit').checked,
+    textreplace:document.getElementById('opt_textreplace').checked,
+    jpSmartSplit:document.getElementById('opt_jp_smart_split')?.checked!==false,
+  };
+  const smartLimit=Math.max(1,parseInt(document.getElementById('smartLengthLimit')?.value,10)||20);
+  const symbolChars=document.getElementById('symbolsField').value;
+  const textReplace=getReplacements();
+  const ARROW_RE=/[→➡➜➝➞➟➠⟶⟹⇒]/g;
+  const ARROW_END_RE=/[→➡➜➝➞➟➠⟶⟹⇒]\s*$/;
+  const PAIRS=[
+    ['《','》'],['＜','＞'],['〈','〉'],['「','」'],['｢','｣'],['『','』'],
+    ['（','）'],['((','))'],['(',')'],['[',']'],['［','］'],
+  ];
+  function endsWithArrow(text){
+    return ARROW_END_RE.test(String(text||'').replace(/<[^>]*>/g,'').replace(/\{[^}]*\}/g,'').replace(/[\u200B-\u200D\u2060\uFEFF]/g,'').trim());
+  }
+  function normalizeOne(text,keepSymbols=false){
+    const cleanOpts=keepSymbols?{...opts,symbols:false}:opts;
+    let value=cleanText(text,cleanOpts,symbolChars);
+    if(opts.textreplace) for(const [from,to] of Object.entries(textReplace)) value=value.replaceAll(from,to);
+    if(opts.width) value=convertWidth(value);
+    if(opts.digit&&!opts.width) value=formatDigit(value);
+    return value.trim();
+  }
+  function compose(indices,{dedupe=false,keepSymbols=false,joiner=' '}={}){
+    const pieces=[];const seen=new Set();
+    for(const index of indices){
+      const value=normalizeOne(blocks[index].text,keepSymbols);
+      if(!value) continue;
+      if(dedupe&&seen.has(value)) continue;
+      seen.add(value);pieces.push(value);
+    }
+    let text=pieces.join(joiner);
+    if(opts.mergeArrow) text=text.replace(ARROW_RE,' ');
+    text=text.replace(/\s+/g,' ').trim();
+    if(opts.dual){
+      const raw=indices.map(index=>String(blocks[index].text||'').replace(/\{[^}]*\}/g,'').replace(/<[^>]*>/g,'').replace(/\\N/gi,' ').trim()).join(joiner);
+      const dual=handleDualSpeaker(raw,text);if(dual!==null) text=dual;
+    }
+    return text;
+  }
+  function withinLimit(indices,maxChars,options){
+    return maxChars===0||visibleSubtitleLength(compose(indices,options))<=maxChars;
+  }
+
+  // The one row immediately following an arrow is reserved for that arrow group.
+  // Even if it is too long to merge, it must not be absorbed by another rule.
+  const arrowProtected=new Set();
+  if(opts.mergeArrow){
+    for(let i=0;i<blocks.length;i++){
+      if(!endsWithArrow(blocks[i].text)) continue;
+      if(i+1<blocks.length&&!endsWithArrow(blocks[i+1].text)) arrowProtected.add(i+1);
+    }
+  }
+
+  const out=[];const srcMap={};
+  const stats={merged:0,converted:0,smartSplit:0,sameMerged:0,arrowMerged:0,pairMerged:0};
+  let i=0;
+  while(i<blocks.length){
+    if(opts.rubi&&blocks[i].style==='rubi'){srcMap[i]=null;i++;continue;}
+    let indices=[i],mergeType='none',dedupe=false,joiner=' ';
+    const startsArrow=opts.mergeArrow&&endsWithArrow(blocks[i].text);
+    const protectedContinuation=arrowProtected.has(i);
+
+    // Priority 1: all consecutive rows with exactly the same start/end merge,
+    // regardless of length or arrow symbols.
+    if(opts.mergeSame){
+      for(let next=i+1;next<blocks.length;next++){
+        if(blocks[next].start!==blocks[i].start||blocks[next].end!==blocks[i].end) break;
+        indices.push(next);
+      }
+      if(indices.length>1){mergeType='same';dedupe=true;}
+    }
+    // Priority 2: an arrow row may merge only with its immediate next row.
+    if(mergeType==='none'&&startsArrow&&i+1<blocks.length&&!endsWithArrow(blocks[i+1].text)){
+      const candidate=[i,i+1];
+      if(withinLimit(candidate,smartLimit)){indices=candidate;mergeType='arrow';}
+    }
+    // Priority 3: an opening bracket may merge only with the immediate closing row.
+    if(mergeType==='none'&&opts.mergePair&&!startsArrow&&!protectedContinuation){
+      const first=String(blocks[i].text||'');
+      const pair=PAIRS.find(([left,right])=>first.includes(left)&&!first.includes(right));
+      if(pair&&i+1<blocks.length){
+        const [,right]=pair;const candidate=[i,i+1];
+        if(!endsWithArrow(blocks[i+1].text)&&String(blocks[i+1].text||'').includes(right)&&withinLimit(candidate,smartLimit,{joiner:''})){
+          indices=candidate;mergeType='pair';joiner='';
+        }
+      }
+    }
+
+    let text=compose(indices,{dedupe,joiner});
+    if(!text){indices.forEach(index=>srcMap[index]=null);i=indices[indices.length-1]+1;continue;}
+    const base={
+      num:out.length+1,start:blocks[indices[0]].start,end:blocks[indices[indices.length-1]].end,text,
+      _changed:indices.length>1||text!==blocks[i].text,_dual:opts.dual&&text.startsWith('-'),
+      _srcStart:indices[0],_srcEnd:indices[indices.length-1],_mergeType:mergeType,
+    };
+    let parts=[base];
+    if(opts.jpSmartSplit&&mergeType==='none'){
+      const guide=compose(indices,{keepSymbols:true});
+      const segments=smartSplitJapaneseText(guide,smartLimit);
+      if(segments.length>1){
+        const cleanedSegments=segments.map(segment=>normalizeOne(segment)).filter(Boolean);
+        const signature=value=>Array.from(String(value||'')).filter(ch=>!/\s/.test(ch)).join('');
+        // Safety invariant: splitting is accepted only when every post-cleaning
+        // character is preserved in the same order.
+        if(cleanedSegments.length>1&&signature(cleanedSegments.join(''))===signature(text)){
+          parts=splitTimedBlock(base,cleanedSegments);
+          const splitId='split_'+indices[0]+'_'+out.length;
+          parts.forEach(part=>part._splitGroupId=splitId);
+          stats.smartSplit+=parts.length-1;
+        }
+      }
+    }
+    parts.forEach(part=>{part.num=out.length+1;out.push(part);});
+    indices.forEach(index=>srcMap[index]=parts.length>1?parts:parts[0]);
+    if(indices.length>1){
+      const reduced=indices.length-1;stats.merged+=reduced;
+      if(mergeType==='same')stats.sameMerged+=reduced;
+      if(mergeType==='arrow')stats.arrowMerged+=reduced;
+      if(mergeType==='pair')stats.pairMerged+=reduced;
+    }
+    i=indices[indices.length-1]+1;
+  }
+  return {blocks:out,stats,srcMap,inputBlocks:blocks,mergedSameCount:stats.sameMerged};
 }
 
 function cleanText(text,opts,symbolChars){
@@ -1866,10 +1998,15 @@ document.getElementById('btnProcess').addEventListener('click',()=>{
     document.getElementById('statConv').textContent=result.stats.converted;
     document.getElementById('statsBar').style.display='flex';
     document.getElementById('btnDownload').disabled=false;
+    document.getElementById('btnQualityCheck').disabled=false;
     renderPanels();
-    const _sameNote=result.mergedSameCount>0?`，同时间戳合并 ${result.mergedSameCount} 条`:'';
+    const mergeNotes=[];
+    if(result.stats.sameMerged) mergeNotes.push('同时间 '+result.stats.sameMerged+' 条');
+    if(result.stats.arrowMerged) mergeNotes.push('箭头 '+result.stats.arrowMerged+' 条');
+    if(result.stats.pairMerged) mergeNotes.push('括号 '+result.stats.pairMerged+' 条');
+    const _sameNote=mergeNotes.length?'（'+mergeNotes.join('，')+'）':'';
     const _splitNote=result.stats.smartSplit>0?`，日文智能拆分 ${result.stats.smartSplit} 处`:'';
-    setLog('ok',`处理完成！${parsedBlocks.length} 条 → ${outputBlocks.length} 条，合并 ${result.stats.merged} 行，转换 ${result.stats.converted} 行${_sameNote}${_splitNote}`);
+    setLog('ok',`处理完成！${parsedBlocks.length} 条 → ${outputBlocks.length} 条，减少 ${result.stats.merged} 条 ${_sameNote}，转换 ${result.stats.converted} 行${_splitNote}`);
   }catch(e){setLog('err','处理出错：'+e.message);console.error(e);}
 });
 
@@ -1892,11 +2029,64 @@ document.getElementById('btnDownload').addEventListener('click',()=>{
   document.body.removeChild(a);
 });
 
+let qualityIssues=[],qualityIssuePos=-1,qualitySignature='';
+function normalizedQualityText(text){
+  return Array.from(String(text||'').toLocaleLowerCase()).filter(isSubtitleTextChar).join('');
+}
+function collectQualityIssues(){
+  const issues=[];
+  const limit=Math.max(1,parseInt(document.getElementById('smartLengthLimit')?.value,10)||20);
+  const opening=[['《','》'],['〈','〉'],['「','」'],['『','』'],['（','）'],['(',')'],['[',']'],['［','］']];
+  outputBlocks.forEach((block,index)=>{
+    const text=String(block.text||'').trim();
+    const sourceRow=Number.isInteger(block._srcStart)?block._srcStart:index;
+    const push=message=>issues.push({index,sourceRow,message});
+    const start=srtTimeToMs(block.start),end=srtTimeToMs(block.end);
+    if(!text) push('字幕内容为空');
+    if(visibleSubtitleLength(text)>limit) push(`文字过长：${visibleSubtitleLength(text)} 字（上限 ${limit}）`);
+    if(!start&&!/^00:00:00,000$/.test(block.start||'')) push('开始时间格式无效');
+    if(end<=start) push('结束时间早于或等于开始时间');
+    if(index>0){
+      const prev=outputBlocks[index-1];
+      if(start<srtTimeToMs(prev.end)) push(`与上一条时间重叠`);
+      const a=normalizedQualityText(prev.text),b=normalizedQualityText(text);
+      if(a&&a===b) push('与上一条字幕重复');
+    }
+    if(/<[^>]*>|\{[^}]*\}/.test(text)) push('仍含格式标签');
+    if(/[→➡➜➝➞➟➠⟶⟹⇒]/.test(text)) push('仍含箭头符号');
+    for(const [left,right] of opening){
+      const lc=text.split(left).length-1,rc=text.split(right).length-1;
+      if(lc!==rc){push(`括号 ${left}${right} 未成对`);break;}
+    }
+  });
+  return issues;
+}
+function focusQualityIssue(issue){
+  document.querySelectorAll('.cmp-row.quality-active').forEach(el=>el.classList.remove('quality-active'));
+  if(currentTab!=='compare') setTab('compare');
+  const row=document.querySelector(`.cmp-row[data-source-row="${issue.sourceRow}"]`);
+  if(row){row.classList.add('quality-active');row.scrollIntoView({behavior:'smooth',block:'center'});}
+}
+document.getElementById('btnQualityCheck').addEventListener('click',()=>{
+  if(!outputBlocks.length) return;
+  const next=collectQualityIssues();
+  const signature=JSON.stringify(next.map(x=>[x.index,x.message]));
+  if(signature!==qualitySignature){qualityIssues=next;qualityIssuePos=-1;qualitySignature=signature;}
+  if(!qualityIssues.length){
+    document.querySelectorAll('.cmp-row.quality-active').forEach(el=>el.classList.remove('quality-active'));
+    setLog('ok','字幕质量检查完成：没有发现明显问题');return;
+  }
+  qualityIssuePos=(qualityIssuePos+1)%qualityIssues.length;
+  const issue=qualityIssues[qualityIssuePos];focusQualityIssue(issue);
+  setLog('err',`质量问题 ${qualityIssuePos+1}/${qualityIssues.length}：第 ${issue.index+1} 条，${issue.message}（再次点击查看下一处）`);
+});
+
 document.getElementById('btnReset').addEventListener('click',()=>{
   rawText='';outputSRT='';parsedBlocks=[];outputBlocks=[];
   document.getElementById('fileName').textContent='未选择文件';
   document.getElementById('btnProcess').disabled=true;
   document.getElementById('btnDownload').disabled=true;
+  document.getElementById('btnQualityCheck').disabled=true;
   document.getElementById('statsBar').style.display='none';
   fileInput.value='';
   showEmptyState();
@@ -1967,7 +2157,9 @@ function renderCompare(){
 
   for(let i=0;i<limit;i++){
     const b=parsedBlocks[i];
-    const ob=srcMapGlobal[i];
+    const mapped=srcMapGlobal[i];
+    const mappedBlocks=Array.isArray(mapped)?mapped:(mapped?[mapped]:[]);
+    const ob=mappedBlocks[0];
 
     // Left cell: always the original block
     const leftCell=`<div class="srt-num">${b.num}</div>
@@ -1975,20 +2167,23 @@ function renderCompare(){
       <div class="srt-text">${escHtml(b.text)}</div>`;
 
     let rightCell='';
-    if(ob===undefined||ob===null){
+    if(mapped===undefined||mapped===null){
       rightCell=`<div class="cmp-ghost"><div class="cmp-ghost-line">✕ 已删除</div></div>`;
     } else if(renderedOut.has(ob)){
       rightCell=`<div class="cmp-ghost"><div class="cmp-ghost-line">↑ 已合并</div></div>`;
     } else {
-      renderedOut.add(ob);
-      const baseCls=ob._dual?'srt-text dual':ob._changed?'srt-text changed':'srt-text';
-      const editedCls=ob._edited?' edited':'';
-      rightCell=`<div class="srt-num">${ob.num}</div>
-        <div class="srt-time">${ob.start} → ${ob.end}</div>
-        <div class="${baseCls} editable${editedCls}" contenteditable="true" spellcheck="false" data-out-idx="${outputBlocks.indexOf(ob)}">${escHtml(ob.text)}</div>`;
+      mappedBlocks.forEach(item=>renderedOut.add(item));
+      rightCell=mappedBlocks.map((item,partIndex)=>{
+        const baseCls=item._dual?'srt-text dual':item._changed?'srt-text changed':'srt-text';
+        const editedCls=item._edited?' edited':'';
+        const splitNote=mappedBlocks.length>1?`<span style="font-size:9px;color:var(--accent);margin-left:6px;">分段 ${partIndex+1}/${mappedBlocks.length}</span>`:'';
+        return `<div${partIndex?' style="margin-top:8px;padding-top:7px;border-top:1px dashed var(--border);"':''}><div class="srt-num">${item.num}${splitNote}</div>
+          <div class="srt-time">${item.start} → ${item.end}</div>
+          <div class="${baseCls} editable${editedCls}" contenteditable="true" spellcheck="false" data-out-idx="${outputBlocks.indexOf(item)}">${escHtml(item.text)}</div></div>`;
+      }).join('');
     }
 
-    rows+=`<div class="cmp-row">
+    rows+=`<div class="cmp-row" data-source-row="${i}">
       <div class="cmp-cell">${leftCell}</div>
       <div class="cmp-cell">${rightCell}</div>
     </div>`;
@@ -2478,7 +2673,7 @@ function restoreMergeOriginal(index,type){
 function smartSplitJpRow(index){
   const block=mergeJpBlocks[index];
   if(!block) return;
-  const limit=parseInt(document.getElementById('mergeCharLimit')?.value,10)||20;
+  const limit=parseInt(document.getElementById('smartLengthLimit')?.value,10)||20;
   const segments=smartSplitJapaneseText(block.text,limit);
   if(segments.length<=1){
     setLog('warn','第 '+(index+1)+' 行不需要拆分，或没有识别到日文');
@@ -2619,7 +2814,7 @@ function replaceMergeSearch(all=false){
 }
 
 function collectMergeIssues(){
-  const limit=parseInt(document.getElementById('mergeCharLimit')?.value,10)||20;
+  const limit=parseInt(document.getElementById('smartLengthLimit')?.value,10)||20;
   const count=Math.max(mergeJpBlocks.length,mergeCnBlocks.length);
   const issues=[];
   for(let i=0;i<count;i++){
@@ -2665,7 +2860,7 @@ function renderMergePreview(){
     const ci=getCnForJp(i);
     const cn=(ci>=0 && ci<mergeCnBlocks.length)?mergeCnBlocks[ci]:null;
     const cnText=cn?(cn.text||''):'';
-    const limit=parseInt(document.getElementById('mergeCharLimit')?.value,10)||20;
+    const limit=parseInt(document.getElementById('smartLengthLimit')?.value,10)||20;
     const jpLength=jp?visibleSubtitleLength(jp.text):0;
     const jpOver=jpLength>limit;
     const cnClass=isBlankCnBlock(cn)?'mp-cn empty':'mp-cn';
@@ -2724,7 +2919,7 @@ document.getElementById('bilingualScroll').addEventListener('focusin',e=>{
 function confirmMergeDownload(){
   const blankRight=mergeJpBlocks.reduce((n,_,i)=>n+(isBlankCnBlock(mergeCnBlocks[i])?1:0),0);
   const extraRight=Math.max(0,mergeCnBlocks.length-mergeJpBlocks.length);
-  const overJp=mergeJpBlocks.reduce((n,b)=>n+(visibleSubtitleLength(b.text)>(parseInt(document.getElementById('mergeCharLimit')?.value,10)||20)?1:0),0);
+  const overJp=mergeJpBlocks.reduce((n,b)=>n+(visibleSubtitleLength(b.text)>(parseInt(document.getElementById('smartLengthLimit')?.value,10)||20)?1:0),0);
   if(!blankRight&&!extraRight&&!overJp) return true;
   const notes=[];
   if(blankRight) notes.push(blankRight+' 行右侧为空');
@@ -2813,7 +3008,8 @@ const PROJECT_DATA_KEYS=[
   'mergeJp','mergeCn','mergeOffset','mergeRowAdj','mergeJpName','mergeCnName',
   'splitBlocks','splitFileName','convBlocks','convFileNameBase','convFileName'
 ];
-const SETTINGS_DATA_KEYS=['toggles','symbols','mergeLimit','mergeCharLimit','replacements'];
+const MERGE_SETTING_IDS=['smartLengthLimit'];
+const SETTINGS_DATA_KEYS=['toggles','symbols','mergeRulesV4','replacements'];
 const ALL_WORKSPACE_KEYS=[...PROJECT_DATA_KEYS,...SETTINGS_DATA_KEYS];
 const WORKSPACE_DB_NAME='subcleaner_workspace_v2';
 const WORKSPACE_DB_VERSION=1;
@@ -2991,7 +3187,7 @@ function saveSettings(){
   const toggles={};
   ['opt_width','opt_symbols','opt_speaker','opt_rubi','opt_comments',
    'opt_merge_pair','opt_merge_arrow','opt_dual','opt_digit','opt_textreplace',
-   'opt_srt_blank2','opt_jp_smart_split'].forEach(id=>{
+   'opt_mergesame','opt_srt_blank2','opt_jp_smart_split'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) toggles[id]=el.checked;
   });
@@ -2999,11 +3195,9 @@ function saveSettings(){
   // symbols
   const sf=document.getElementById('symbolsField');
   if(sf) STORE.save('symbols', sf.value);
-  // merge limit
-  const ml=document.getElementById('mergeLimit');
-  if(ml) STORE.save('mergeLimit', ml.value);
-  const mcl=document.getElementById('mergeCharLimit');
-  if(mcl) STORE.save('mergeCharLimit', mcl.value);
+  const mergeRules={};
+  MERGE_SETTING_IDS.forEach(id=>{const el=document.getElementById(id);if(el)mergeRules[id]=el.value;});
+  STORE.save('mergeRulesV4',mergeRules);
   queueProjectCommit('设置修改');
 }
 
@@ -3025,22 +3219,19 @@ function loadSettings(){
     const el=document.getElementById(id);
     if(el) el.checked=val;
   });
-  const sameToggle=document.getElementById('opt_mergesame');
-  if(sameToggle) sameToggle.checked=true;
   // symbols
   const sym=STORE.load('symbols',null);
   if(sym!==null){ const sf=document.getElementById('symbolsField'); if(sf) sf.value=sym; }
-  // merge limit
-  const ml=STORE.load('mergeLimit',null);
-  if(ml!==null){ const mle=document.getElementById('mergeLimit'); if(mle) mle.value=ml; }
-  const mcl=STORE.load('mergeCharLimit',null);
-  if(mcl!==null){
-    const mcle=document.getElementById('mergeCharLimit');
-    // Migrate projects created when the old default was 15 to the new 20-char rule.
-    const migrated=String(mcl)==='15'?'20':mcl;
-    if(mcle) mcle.value=migrated;
-    if(String(mcl)==='15') STORE.save('mergeCharLimit','20');
+  const sameToggle=document.getElementById('opt_mergesame');
+  if(sameToggle) sameToggle.checked=true;
+  let mergeRules=STORE.load('mergeRulesV4',null);
+  if(!mergeRules){
+    const v3=STORE.load('mergeRulesV3',{});
+    const oldChars=Math.max(1,parseInt(v3.smartSplitChars||v3.arrowMaxChars||STORE.load('mergeCharLimit','20'),10)||20);
+    mergeRules={smartLengthLimit:String(oldChars)};
+    STORE.save('mergeRulesV4',mergeRules);
   }
+  MERGE_SETTING_IDS.forEach(id=>{const el=document.getElementById(id);if(el&&mergeRules[id]!==undefined)el.value=mergeRules[id];});
   // replacements
   const rows=STORE.load('replacements',null);
   if(rows&&rows.length>0) buildReplaceTable(rows);
@@ -3052,10 +3243,10 @@ document.querySelectorAll('.toggle input[type=checkbox]').forEach(el=>{
 });
 const _sf=document.getElementById('symbolsField');
 if(_sf) _sf.addEventListener('input', saveSettings);
-const _ml=document.getElementById('mergeLimit');
-if(_ml) _ml.addEventListener('change', saveSettings);
-const _mcl=document.getElementById('mergeCharLimit');
-if(_mcl) _mcl.addEventListener('change', ()=>{saveSettings();if(mergeJpBlocks.length||mergeCnBlocks.length) renderMergePreview();});
+MERGE_SETTING_IDS.forEach(id=>{
+  const el=document.getElementById(id);
+  if(el)el.addEventListener('change',()=>{saveSettings();if(id==='smartLengthLimit'&&(mergeJpBlocks.length||mergeCnBlocks.length))renderMergePreview();});
+});
 
 // ----------------------------------------
 function saveFileState(){
@@ -3086,11 +3277,15 @@ function loadFileState(){
   document.getElementById('btnProcess').disabled=false;
   if(ob.length){
     document.getElementById('btnDownload').disabled=false;
+    document.getElementById('btnQualityCheck').disabled=false;
     srcMapGlobal={};
     // rebuild srcMap from outputBlocks
+    const splitGroups={};
+    ob.forEach(b=>{if(b._splitGroupId)(splitGroups[b._splitGroupId]||(splitGroups[b._splitGroupId]=[])).push(b);});
     ob.forEach(b=>{
       if(b._srcStart!==undefined&&b._srcEnd!==undefined){
-        for(let s=b._srcStart;s<=b._srcEnd;s++) srcMapGlobal[s]=b;
+        const mapped=b._splitGroupId?splitGroups[b._splitGroupId]:b;
+        for(let s=b._srcStart;s<=b._srcEnd;s++) srcMapGlobal[s]=mapped;
       }
     });
     document.getElementById('statIn').textContent=pb.length;
