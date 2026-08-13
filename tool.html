@@ -562,6 +562,11 @@
   .auth-account-row { display:flex; align-items:center; gap:7px; padding:8px 9px; background:var(--bg3); border-radius:6px; font-size:11px; }
   .auth-account-row span { flex:1; }
   .auth-note { font-size:9px !important; color:var(--text3); margin:8px 0 0 !important; }
+  .quality-list { display:flex; flex-direction:column; gap:6px; max-height:360px; overflow:auto; margin:12px 0; }
+  .quality-item { width:100%; text-align:left; border:1px solid var(--border); background:var(--bg2); border-radius:7px; padding:9px 10px; cursor:pointer; color:var(--text); }
+  .quality-item:hover { border-color:var(--accent); background:#faf9ff; }
+  .quality-item-title { font-size:11px; color:var(--red); margin-bottom:3px; }
+  .quality-item-text { font-size:10px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cmp-row.quality-active .cmp-cell { background:#fff4c7 !important; }
 </style>
 </head>
@@ -590,6 +595,15 @@
     <div class="auth-account-list" id="authAccountList"></div>
     <button class="auth-mini-btn" id="authManageClose" type="button" style="width:100%;">关闭</button>
     <p class="auth-note">轻量本地保护：账号保存在当前浏览器，不会随 HTML 文件自动复制到其他电脑。</p>
+  </div>
+</div>
+
+<div class="auth-modal" id="qualityModal">
+  <div class="auth-card" style="width:min(680px,100%);">
+    <h2>字幕质量检查</h2>
+    <p id="qualitySummary">检查文字长度、空字幕、时间格式、时间重叠、相邻重复、残留标签/箭头和未成对括号。</p>
+    <div class="quality-list" id="qualityList"></div>
+    <button class="auth-mini-btn" id="qualityClose" type="button" style="width:100%;">关闭</button>
   </div>
 </div>
 <div id="autosaveStatus" aria-live="polite" style="position:fixed;right:14px;bottom:14px;z-index:9999;
@@ -686,6 +700,21 @@
     <details class="archive-details">
       <summary>清理规则与高级设置</summary>
       <div class="archive-details-body">
+
+    <!-- Merge and smart length: commonly used, placed first -->
+    <div>
+      <div class="section-title">合并与智能长度</div>
+      <div class="toggle-row"><span class="toggle-label">相同起止时间自动合并（固定）</span><label class="toggle"><input type="checkbox" id="opt_mergesame" checked disabled><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">➡/→ 向下合并</span><label class="toggle"><input type="checkbox" id="opt_merge_arrow" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+      <div class="toggle-row"><span class="toggle-label">成对括号跨行合并</span><label class="toggle"><input type="checkbox" id="opt_merge_pair" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
+      <div class="option-row">
+        <div><div class="option-name">日文超长智能分段</div></div>
+        <label class="toggle"><input type="checkbox" id="opt_jp_smart_split" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+      </div>
+      <div class="num-row" style="margin-top:6px;"><label for="smartLengthLimit">统一智能长度上限</label><input type="number" id="smartLengthLimit" value="20" min="1" max="100"></div>
+      <div class="edit-hint">同时间优先；箭头、括号和分段共用上限，标点不计。</div>
+    </div>
+
     <div>
       <div class="section-title">处理选项</div>
       <div class="toggle-row">
@@ -743,21 +772,6 @@
         <tbody id="replaceTableBody"></tbody>
       </table>
       <button class="add-row-btn" id="addReplaceRow">＋ 添加一行</button>
-    </div>
-
-    <!-- Complete, independent merge rules -->
-    <div>
-      <div class="section-title">合并与智能长度</div>
-      <div class="toggle-row"><span class="toggle-label">相同起止时间自动合并（固定）</span><label class="toggle"><input type="checkbox" id="opt_mergesame" checked disabled><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
-      <div class="edit-hint">相同时间直接合并，不受长度限制；遇到箭头组会停止。</div>
-      <div class="toggle-row" style="margin-top:12px;"><span class="toggle-label">➡/→ 行作为组首，只向下合并</span><label class="toggle"><input type="checkbox" id="opt_merge_arrow" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
-      <div class="toggle-row" style="margin-top:12px;"><span class="toggle-label">成对括号跨行（《…》等）</span><label class="toggle"><input type="checkbox" id="opt_merge_pair" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
-      <div class="option-row" style="margin-top:8px;">
-        <div><div class="option-name">日文超长时智能分段</div><div class="option-desc">优先按句号、问号、逗号和自然停顿拆分</div></div>
-        <label class="toggle"><input type="checkbox" id="opt_jp_smart_split" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-      </div>
-      <div class="num-row" style="margin-top:6px;"><label for="smartLengthLimit">统一智能长度上限</label><input type="number" id="smartLengthLimit" value="20" min="1" max="100"></div>
-      <div class="edit-hint">箭头与括号只尝试合并相邻两行，合计不超过此长度才合并；智能分段也使用同一长度。只数文字和数字，不数标点与符号。</div>
     </div>
 
       </div>
@@ -1787,47 +1801,53 @@ function processBlocks(blocks){
     return maxChars===0||visibleSubtitleLength(compose(indices,options))<=maxChars;
   }
 
-  // The one row immediately following an arrow is reserved for that arrow group.
-  // Even if it is too long to merge, it must not be absorbed by another rule.
-  const arrowProtected=new Set();
-  if(opts.mergeArrow){
-    for(let i=0;i<blocks.length;i++){
-      if(!endsWithArrow(blocks[i].text)) continue;
-      if(i+1<blocks.length&&!endsWithArrow(blocks[i+1].text)) arrowProtected.add(i+1);
-    }
-  }
-
   const out=[];const srcMap={};
   const stats={merged:0,converted:0,smartSplit:0,sameMerged:0,arrowMerged:0,pairMerged:0};
+  function timeGroupAt(start){
+    const group=[start];
+    for(let next=start+1;next<blocks.length;next++){
+      if(blocks[next].start!==blocks[start].start||blocks[next].end!==blocks[start].end) break;
+      group.push(next);
+    }
+    return group;
+  }
+  function groupEndsWithArrow(group){
+    for(let n=group.length-1;n>=0;n--) if(String(blocks[group[n]].text||'').trim()) return endsWithArrow(blocks[group[n]].text);
+    return false;
+  }
   let i=0;
   while(i<blocks.length){
     if(opts.rubi&&blocks[i].style==='rubi'){srcMap[i]=null;i++;continue;}
-    let indices=[i],mergeType='none',dedupe=false,joiner=' ';
-    const startsArrow=opts.mergeArrow&&endsWithArrow(blocks[i].text);
-    const protectedContinuation=arrowProtected.has(i);
+    // Stage 1: exact-time rows form an indivisible time group first.
+    const firstGroup=timeGroupAt(i);
+    let indices=[...firstGroup],mergeType=firstGroup.length>1?'same':'none',dedupe=firstGroup.length>1,joiner=' ';
+    let sameReductions=firstGroup.length-1,arrowJoins=0,pairJoins=0;
 
-    // Priority 1: all consecutive rows with exactly the same start/end merge,
-    // regardless of length or arrow symbols.
-    if(opts.mergeSame){
-      for(let next=i+1;next<blocks.length;next++){
-        if(blocks[next].start!==blocks[i].start||blocks[next].end!==blocks[i].end) break;
-        indices.push(next);
+    // Stage 2: if the completed time group ends in an arrow, try the next
+    // complete time group. Arrow chains may continue while the total fits.
+    if(opts.mergeArrow){
+      while(groupEndsWithArrow(indices)){
+        const nextStart=indices[indices.length-1]+1;
+        if(nextStart>=blocks.length) break;
+        const nextGroup=timeGroupAt(nextStart);
+        const candidate=[...indices,...nextGroup];
+        if(!withinLimit(candidate,smartLimit,{dedupe:true})) break;
+        indices=candidate;mergeType='arrow';dedupe=true;
+        sameReductions+=nextGroup.length-1;arrowJoins++;
       }
-      if(indices.length>1){mergeType='same';dedupe=true;}
     }
-    // Priority 2: an arrow row may merge only with its immediate next row.
-    if(mergeType==='none'&&startsArrow&&i+1<blocks.length&&!endsWithArrow(blocks[i+1].text)){
-      const candidate=[i,i+1];
-      if(withinLimit(candidate,smartLimit)){indices=candidate;mergeType='arrow';}
-    }
-    // Priority 3: an opening bracket may merge only with the immediate closing row.
-    if(mergeType==='none'&&opts.mergePair&&!startsArrow&&!protectedContinuation){
-      const first=String(blocks[i].text||'');
+    // Stage 3: paired brackets may join this time group to the next complete
+    // time group, using the same unified length limit.
+    if(mergeType!=='arrow'&&opts.mergePair){
+      const first=firstGroup.map(index=>String(blocks[index].text||'')).join(' ');
       const pair=PAIRS.find(([left,right])=>first.includes(left)&&!first.includes(right));
-      if(pair&&i+1<blocks.length){
-        const [,right]=pair;const candidate=[i,i+1];
-        if(!endsWithArrow(blocks[i+1].text)&&String(blocks[i+1].text||'').includes(right)&&withinLimit(candidate,smartLimit,{joiner:''})){
-          indices=candidate;mergeType='pair';joiner='';
+      const nextStart=firstGroup[firstGroup.length-1]+1;
+      if(pair&&nextStart<blocks.length){
+        const [,right]=pair;const nextGroup=timeGroupAt(nextStart);const candidate=[...firstGroup,...nextGroup];
+        const nextRaw=nextGroup.map(index=>String(blocks[index].text||'')).join(' ');
+        if(nextRaw.includes(right)&&withinLimit(candidate,smartLimit,{dedupe:true,joiner:''})){
+          indices=candidate;mergeType='pair';dedupe=true;joiner='';
+          sameReductions+=nextGroup.length-1;pairJoins=1;
         }
       }
     }
@@ -1859,10 +1879,10 @@ function processBlocks(blocks){
     parts.forEach(part=>{part.num=out.length+1;out.push(part);});
     indices.forEach(index=>srcMap[index]=parts.length>1?parts:parts[0]);
     if(indices.length>1){
-      const reduced=indices.length-1;stats.merged+=reduced;
-      if(mergeType==='same')stats.sameMerged+=reduced;
-      if(mergeType==='arrow')stats.arrowMerged+=reduced;
-      if(mergeType==='pair')stats.pairMerged+=reduced;
+      stats.merged+=indices.length-1;
+      stats.sameMerged+=sameReductions;
+      stats.arrowMerged+=arrowJoins;
+      stats.pairMerged+=pairJoins;
     }
     i=indices[indices.length-1]+1;
   }
@@ -2069,17 +2089,33 @@ function focusQualityIssue(issue){
 }
 document.getElementById('btnQualityCheck').addEventListener('click',()=>{
   if(!outputBlocks.length) return;
-  const next=collectQualityIssues();
-  const signature=JSON.stringify(next.map(x=>[x.index,x.message]));
-  if(signature!==qualitySignature){qualityIssues=next;qualityIssuePos=-1;qualitySignature=signature;}
+  qualityIssues=collectQualityIssues();qualityIssuePos=-1;
+  qualitySignature=JSON.stringify(qualityIssues.map(x=>[x.index,x.message]));
+  const modal=document.getElementById('qualityModal');
+  const summary=document.getElementById('qualitySummary');
+  const list=document.getElementById('qualityList');
   if(!qualityIssues.length){
     document.querySelectorAll('.cmp-row.quality-active').forEach(el=>el.classList.remove('quality-active'));
-    setLog('ok','字幕质量检查完成：没有发现明显问题');return;
+    summary.textContent='已检查：文字长度、空字幕、时间格式、时间重叠、相邻重复、残留标签/箭头和未成对括号。';
+    list.innerHTML='<div style="padding:22px;text-align:center;color:var(--green);font-size:12px;">✓ 没有发现明显问题</div>';
+    modal.classList.add('open');setLog('ok','字幕质量检查完成：没有发现明显问题');return;
   }
-  qualityIssuePos=(qualityIssuePos+1)%qualityIssues.length;
-  const issue=qualityIssues[qualityIssuePos];focusQualityIssue(issue);
-  setLog('err',`质量问题 ${qualityIssuePos+1}/${qualityIssues.length}：第 ${issue.index+1} 条，${issue.message}（再次点击查看下一处）`);
+  const affected=new Set(qualityIssues.map(x=>x.index)).size;
+  summary.textContent=`共发现 ${qualityIssues.length} 个问题，涉及 ${affected} 条字幕。已检查：文字长度、空字幕、时间、重复、标签、箭头和括号。点击下面的问题可定位。`;
+  list.innerHTML=qualityIssues.map((issue,pos)=>`<button class="quality-item" type="button" data-quality-pos="${pos}">
+    <div class="quality-item-title">第 ${issue.index+1} 条 · ${escHtml(issue.message)}</div>
+    <div class="quality-item-text">${escHtml(String(outputBlocks[issue.index]?.text||'（空字幕）'))}</div>
+  </button>`).join('');
+  modal.classList.add('open');setLog('warn',`字幕质量检查：发现 ${qualityIssues.length} 个问题`);
 });
+document.getElementById('qualityList').addEventListener('click',e=>{
+  const item=e.target.closest('[data-quality-pos]');if(!item)return;
+  const issue=qualityIssues[Number(item.dataset.qualityPos)];if(!issue)return;
+  document.getElementById('qualityModal').classList.remove('open');focusQualityIssue(issue);
+  setLog('warn',`第 ${issue.index+1} 条：${issue.message}`);
+});
+document.getElementById('qualityClose').addEventListener('click',()=>document.getElementById('qualityModal').classList.remove('open'));
+document.getElementById('qualityModal').addEventListener('click',e=>{if(e.target.id==='qualityModal')e.currentTarget.classList.remove('open');});
 
 document.getElementById('btnReset').addEventListener('click',()=>{
   rawText='';outputSRT='';parsedBlocks=[];outputBlocks=[];
