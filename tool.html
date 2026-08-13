@@ -319,6 +319,14 @@
     background: #fff;
     box-shadow: inset 0 0 0 1.5px var(--accent);
   }
+  .srt-text.editable.length-over {
+    background:#ffe9e7;
+    box-shadow:inset 0 -2px 0 #e45b52;
+  }
+  .main-length {
+    display:block; margin-top:4px; font:9px 'Space Mono',monospace; color:var(--text3);
+  }
+  .main-length.over { color:#d8463d; font-weight:700; }
   .srt-text.edited::after {
     content: '✎ 已编辑';
     display: inline-block;
@@ -562,11 +570,6 @@
   .auth-account-row { display:flex; align-items:center; gap:7px; padding:8px 9px; background:var(--bg3); border-radius:6px; font-size:11px; }
   .auth-account-row span { flex:1; }
   .auth-note { font-size:9px !important; color:var(--text3); margin:8px 0 0 !important; }
-  .quality-list { display:flex; flex-direction:column; gap:6px; max-height:360px; overflow:auto; margin:12px 0; }
-  .quality-item { width:100%; text-align:left; border:1px solid var(--border); background:var(--bg2); border-radius:7px; padding:9px 10px; cursor:pointer; color:var(--text); }
-  .quality-item:hover { border-color:var(--accent); background:#faf9ff; }
-  .quality-item-title { font-size:11px; color:var(--red); margin-bottom:3px; }
-  .quality-item-text { font-size:10px; color:var(--text2); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .cmp-row.quality-active .cmp-cell { background:#fff4c7 !important; }
 </style>
 </head>
@@ -598,14 +601,6 @@
   </div>
 </div>
 
-<div class="auth-modal" id="qualityModal">
-  <div class="auth-card" style="width:min(680px,100%);">
-    <h2>字幕质量检查</h2>
-    <p id="qualitySummary">检查文字长度、空字幕、时间格式、时间重叠、相邻重复、残留标签/箭头和未成对括号。</p>
-    <div class="quality-list" id="qualityList"></div>
-    <button class="auth-mini-btn" id="qualityClose" type="button" style="width:100%;">关闭</button>
-  </div>
-</div>
 <div id="autosaveStatus" aria-live="polite" style="position:fixed;right:14px;bottom:14px;z-index:9999;
   padding:7px 11px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.94);
   color:var(--text3);font-size:11px;box-shadow:0 3px 14px rgba(0,0,0,.08);backdrop-filter:blur(8px);">
@@ -707,12 +702,8 @@
       <div class="toggle-row"><span class="toggle-label">相同起止时间自动合并（固定）</span><label class="toggle"><input type="checkbox" id="opt_mergesame" checked disabled><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
       <div class="toggle-row"><span class="toggle-label">➡/→ 向下合并</span><label class="toggle"><input type="checkbox" id="opt_merge_arrow" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
       <div class="toggle-row"><span class="toggle-label">成对括号跨行合并</span><label class="toggle"><input type="checkbox" id="opt_merge_pair" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
-      <div class="option-row">
-        <div><div class="option-name">日文超长智能分段</div></div>
-        <label class="toggle"><input type="checkbox" id="opt_jp_smart_split" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
-      </div>
+      <div class="toggle-row"><span class="toggle-label">日文超长智能分段</span><label class="toggle"><input type="checkbox" id="opt_jp_smart_split" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label></div>
       <div class="num-row" style="margin-top:6px;"><label for="smartLengthLimit">统一智能长度上限</label><input type="number" id="smartLengthLimit" value="20" min="1" max="100"></div>
-      <div class="edit-hint">同时间优先；箭头、括号和分段共用上限，标点不计。</div>
     </div>
 
     <div>
@@ -814,7 +805,7 @@
         <button class="bi-offset-btn bi-undo-btn" onclick="undoMerge()" title="撤回 Ctrl+Z">↩</button>
       </div>
       <div id="mergeInfo" class="bi-info"></div>
-      <button class="btn btn-outline" id="btnMergeIssue" type="button" style="font-size:11px;padding:6px 9px;">⚠ 检查并跳到下一处问题</button>
+      <button class="btn btn-outline" id="btnMergeIssue" type="button" style="font-size:11px;padding:6px 9px;">⚠ 检查双语空行、错位与超长</button>
       <details class="archive-details" style="padding-top:5px;">
         <summary>键盘快捷操作</summary>
         <div class="bi-info" style="line-height:1.8;padding-top:6px;">
@@ -1001,6 +992,18 @@ async function authOnlineUser(session){
     return await response.json();
   }catch(e){return null;}
 }
+async function authRefreshOnlineSession(session){
+  if(!session?.refresh_token)return null;
+  const base=ONLINE_AUTH_CONFIG.url.replace(/\/$/,'');
+  try{
+    const response=await fetch(base+'/auth/v1/token?grant_type=refresh_token',{
+      method:'POST',headers:{'apikey':ONLINE_AUTH_CONFIG.anonKey,'Content-Type':'application/json'},
+      body:JSON.stringify({refresh_token:session.refresh_token}),
+    });
+    const data=await response.json().catch(()=>null);
+    return response.ok&&data?.access_token?data:null;
+  }catch(e){return null;}
+}
 async function authOnlineApproval(session,user){
   const base=ONLINE_AUTH_CONFIG.url.replace(/\/$/,'');
   try{
@@ -1017,6 +1020,7 @@ async function authTryOnlineUnlock(session,user){
   const approval=await authOnlineApproval(session,user);
   if(approval.ok){authUnlock({username:approval.username||authOnlineDisplayName(user),admin:approval.isAdmin,online:true},session);return true;}
   sessionStorage.setItem(AUTH_ONLINE_SESSION_KEY,JSON.stringify(session));
+  localStorage.setItem(AUTH_ONLINE_SESSION_KEY,JSON.stringify(session));
   document.getElementById('authError').textContent=approval.message||(approval.setupError?'审核功能尚未配置。':'账号已注册，正在等待管理员审核。审核后刷新页面即可进入。');
   return false;
 }
@@ -1077,10 +1081,23 @@ function authShowMissingOnlineConfig(){
   document.getElementById('authSubmit').disabled=true;
   document.getElementById('authSubmit').textContent='等待管理员配置';
 }
+function authShowLocalDisabled(){
+  document.getElementById('authTitle').textContent='本地版不可用';
+  document.getElementById('authHint').textContent='请通过已发布的 GitHub Pages 在线地址登录使用。';
+  document.getElementById('authUsername').disabled=true;
+  document.getElementById('authPassword').disabled=true;
+  document.getElementById('authConfirm').disabled=true;
+  document.getElementById('authSubmit').disabled=true;
+  document.getElementById('authSubmit').textContent='仅限线上使用';
+  document.getElementById('authModeSwitch').style.display='none';
+}
 function authUnlock(account,onlineSession=null){
   authCurrentAccount=account;
   authOnlineSession=onlineSession;
-  if(onlineSession) sessionStorage.setItem(AUTH_ONLINE_SESSION_KEY,JSON.stringify(onlineSession));
+  if(onlineSession){
+    sessionStorage.setItem(AUTH_ONLINE_SESSION_KEY,JSON.stringify(onlineSession));
+    localStorage.setItem(AUTH_ONLINE_SESSION_KEY,JSON.stringify(onlineSession));
+  }
   else sessionStorage.setItem(AUTH_SESSION_KEY,account.username);
   document.getElementById('authOverlay').style.display='none';
   document.getElementById('authHeader').style.display='flex';
@@ -1088,24 +1105,16 @@ function authUnlock(account,onlineSession=null){
   document.getElementById('authManageBtn').style.display=account.admin?'inline-block':'none';
 }
 async function authInit(){
-  if(authIsHosted()){
-    if(!authOnlineConfigured()){authShowMissingOnlineConfig();return;}
-    authSetOnlineMode();
-    let session=null;
-    try{session=JSON.parse(sessionStorage.getItem(AUTH_ONLINE_SESSION_KEY)||'null');}catch(e){}
-    const user=await authOnlineUser(session);
-    if(user){await authTryOnlineUnlock(session,user);return;}
-    sessionStorage.removeItem(AUTH_ONLINE_SESSION_KEY);
-    setTimeout(()=>document.getElementById('authUsername').focus(),30);
-    return;
-  }
-  const data=authLoad();
-  if(!data.accounts.length){authSetMode(true);return;}
-  authSetMode(false);
-  const sessionUser=sessionStorage.getItem(AUTH_SESSION_KEY);
-  const account=data.accounts.find(a=>a.username===sessionUser);
-  if(account) authUnlock(account);
-  else setTimeout(()=>document.getElementById('authUsername').focus(),30);
+  if(!authIsHosted()){authShowLocalDisabled();return;}
+  if(!authOnlineConfigured()){authShowMissingOnlineConfig();return;}
+  authSetOnlineMode();
+  let session=null;
+  try{session=JSON.parse(sessionStorage.getItem(AUTH_ONLINE_SESSION_KEY)||localStorage.getItem(AUTH_ONLINE_SESSION_KEY)||'null');}catch(e){}
+  let user=await authOnlineUser(session);
+  if(!user&&session?.refresh_token){session=await authRefreshOnlineSession(session);user=await authOnlineUser(session);}
+  if(user){await authTryOnlineUnlock(session,user);return;}
+  sessionStorage.removeItem(AUTH_ONLINE_SESSION_KEY);localStorage.removeItem(AUTH_ONLINE_SESSION_KEY);
+  setTimeout(()=>document.getElementById('authUsername').focus(),30);
 }
 document.getElementById('authForm').addEventListener('submit',async e=>{
   e.preventDefault();
@@ -1164,7 +1173,8 @@ document.getElementById('authModeSwitch').addEventListener('click',()=>{
 });
 document.getElementById('authLockBtn').addEventListener('click',()=>{
   try{if(typeof flushWorkspaceSave==='function') flushWorkspaceSave();}catch(e){}
-  sessionStorage.removeItem(AUTH_SESSION_KEY);sessionStorage.removeItem(AUTH_ONLINE_SESSION_KEY);location.reload();
+  sessionStorage.removeItem(AUTH_SESSION_KEY);sessionStorage.removeItem(AUTH_ONLINE_SESSION_KEY);
+  localStorage.removeItem(AUTH_ONLINE_SESSION_KEY);location.reload();
 });
 function authRenderAccounts(){
   const data=authLoad();
@@ -2089,33 +2099,18 @@ function focusQualityIssue(issue){
 }
 document.getElementById('btnQualityCheck').addEventListener('click',()=>{
   if(!outputBlocks.length) return;
-  qualityIssues=collectQualityIssues();qualityIssuePos=-1;
-  qualitySignature=JSON.stringify(qualityIssues.map(x=>[x.index,x.message]));
-  const modal=document.getElementById('qualityModal');
-  const summary=document.getElementById('qualitySummary');
-  const list=document.getElementById('qualityList');
+  const nextIssues=collectQualityIssues();
+  const nextSignature=JSON.stringify(nextIssues.map(x=>[x.index,x.sourceRow,x.message]));
+  if(nextSignature!==qualitySignature){qualityIssues=nextIssues;qualityIssuePos=-1;qualitySignature=nextSignature;}
   if(!qualityIssues.length){
     document.querySelectorAll('.cmp-row.quality-active').forEach(el=>el.classList.remove('quality-active'));
-    summary.textContent='已检查：文字长度、空字幕、时间格式、时间重叠、相邻重复、残留标签/箭头和未成对括号。';
-    list.innerHTML='<div style="padding:22px;text-align:center;color:var(--green);font-size:12px;">✓ 没有发现明显问题</div>';
-    modal.classList.add('open');setLog('ok','字幕质量检查完成：没有发现明显问题');return;
+    setLog('ok','检查完成：长度、空字幕、时间、重复、标签、箭头和括号均未发现明显问题');return;
   }
-  const affected=new Set(qualityIssues.map(x=>x.index)).size;
-  summary.textContent=`共发现 ${qualityIssues.length} 个问题，涉及 ${affected} 条字幕。已检查：文字长度、空字幕、时间、重复、标签、箭头和括号。点击下面的问题可定位。`;
-  list.innerHTML=qualityIssues.map((issue,pos)=>`<button class="quality-item" type="button" data-quality-pos="${pos}">
-    <div class="quality-item-title">第 ${issue.index+1} 条 · ${escHtml(issue.message)}</div>
-    <div class="quality-item-text">${escHtml(String(outputBlocks[issue.index]?.text||'（空字幕）'))}</div>
-  </button>`).join('');
-  modal.classList.add('open');setLog('warn',`字幕质量检查：发现 ${qualityIssues.length} 个问题`);
+  qualityIssuePos=(qualityIssuePos+1)%qualityIssues.length;
+  const issue=qualityIssues[qualityIssuePos];focusQualityIssue(issue);
+  const snippet=String(outputBlocks[issue.index]?.text||'（空字幕）').replace(/\s+/g,' ').slice(0,36);
+  setLog('warn',`问题 ${qualityIssuePos+1}/${qualityIssues.length}：${issue.message}｜处理结果第 ${issue.index+1} 条，对应原字幕第 ${issue.sourceRow+1} 行｜${snippet}`);
 });
-document.getElementById('qualityList').addEventListener('click',e=>{
-  const item=e.target.closest('[data-quality-pos]');if(!item)return;
-  const issue=qualityIssues[Number(item.dataset.qualityPos)];if(!issue)return;
-  document.getElementById('qualityModal').classList.remove('open');focusQualityIssue(issue);
-  setLog('warn',`第 ${issue.index+1} 条：${issue.message}`);
-});
-document.getElementById('qualityClose').addEventListener('click',()=>document.getElementById('qualityModal').classList.remove('open'));
-document.getElementById('qualityModal').addEventListener('click',e=>{if(e.target.id==='qualityModal')e.currentTarget.classList.remove('open');});
 
 document.getElementById('btnReset').addEventListener('click',()=>{
   rawText='';outputSRT='';parsedBlocks=[];outputBlocks=[];
@@ -2210,12 +2205,17 @@ function renderCompare(){
     } else {
       mappedBlocks.forEach(item=>renderedOut.add(item));
       rightCell=mappedBlocks.map((item,partIndex)=>{
+        const itemIndex=outputBlocks.indexOf(item);
+        const lengthLimit=Math.max(1,parseInt(document.getElementById('smartLengthLimit')?.value,10)||20);
+        const textLength=visibleSubtitleLength(item.text);
+        const lengthOver=textLength>lengthLimit;
         const baseCls=item._dual?'srt-text dual':item._changed?'srt-text changed':'srt-text';
         const editedCls=item._edited?' edited':'';
         const splitNote=mappedBlocks.length>1?`<span style="font-size:9px;color:var(--accent);margin-left:6px;">分段 ${partIndex+1}/${mappedBlocks.length}</span>`:'';
         return `<div${partIndex?' style="margin-top:8px;padding-top:7px;border-top:1px dashed var(--border);"':''}><div class="srt-num">${item.num}${splitNote}</div>
           <div class="srt-time">${item.start} → ${item.end}</div>
-          <div class="${baseCls} editable${editedCls}" contenteditable="true" spellcheck="false" data-out-idx="${outputBlocks.indexOf(item)}">${escHtml(item.text)}</div></div>`;
+          <div class="${baseCls} editable${editedCls}${lengthOver?' length-over':''}" contenteditable="true" spellcheck="false" data-out-idx="${itemIndex}">${escHtml(item.text)}</div>
+          <span class="main-length${lengthOver?' over':''}" data-main-length-for="${itemIndex}">${textLength}/${lengthLimit}</span></div>`;
       }).join('');
     }
 
@@ -2239,13 +2239,16 @@ function renderPanel(id,blocks,isOut){
   const el=document.getElementById(id);
   if(!blocks.length){el.innerHTML='<div style="color:var(--text3);padding:20px">（无内容）</div>';return;}
   el.innerHTML=blocks.slice(0,500).map((b,idx)=>{
+    const lengthLimit=Math.max(1,parseInt(document.getElementById('smartLengthLimit')?.value,10)||20);
+    const textLength=visibleSubtitleLength(b.text);
+    const lengthOver=isOut&&textLength>lengthLimit;
     const baseCls=isOut&&b._dual?'srt-text dual':isOut&&b._changed?'srt-text changed':'srt-text';
     const editedCls=isOut&&b._edited?' edited':'';
-    const editAttrs=isOut?` editable${editedCls}" contenteditable="true" spellcheck="false" data-out-idx="${idx}`:'';
+    const editAttrs=isOut?` editable${editedCls}${lengthOver?' length-over':''}" contenteditable="true" spellcheck="false" data-out-idx="${idx}`:'';
     return `<div class="srt-block">
       <div class="srt-num">${b.num}</div>
       <div class="srt-time">${b.start} → ${b.end}</div>
-      <div class="${baseCls}${editAttrs}">${escHtml(b.text)}</div>
+      <div class="${baseCls}${editAttrs}">${escHtml(b.text)}</div>${isOut?`<span class="main-length${lengthOver?' over':''}" data-main-length-for="${idx}">${textLength}/${lengthLimit}</span>`:''}
     </div>`;
   }).join('');
   if(blocks.length>500) el.innerHTML+=`<div style="color:var(--text3);padding:10px;font-size:11px">… 仅显示前 500 条，完整内容请下载文件</div>`;
@@ -2382,6 +2385,11 @@ function handleResultEdit(e){
   block._edited = true;
   // visual marker
   el.classList.add('edited');
+  const lengthLimit=Math.max(1,parseInt(document.getElementById('smartLengthLimit')?.value,10)||20);
+  const textLength=visibleSubtitleLength(newText),lengthOver=textLength>lengthLimit;
+  el.classList.toggle('length-over',lengthOver);
+  const count=el.parentElement?.querySelector(`.main-length[data-main-length-for="${idx}"]`);
+  if(count){count.textContent=textLength+'/'+lengthLimit;count.classList.toggle('over',lengthOver);}
   // rebuild SRT for stats/download consistency
   outputSRT = buildSRT(outputBlocks);
   setLog('ok','已修改第 '+block.num+' 条字幕（下载时会保存你的修改）');
@@ -2851,6 +2859,7 @@ function replaceMergeSearch(all=false){
 
 function collectMergeIssues(){
   const limit=parseInt(document.getElementById('smartLengthLimit')?.value,10)||20;
+  const cnLimit=25;
   const count=Math.max(mergeJpBlocks.length,mergeCnBlocks.length);
   const issues=[];
   for(let i=0;i<count;i++){
@@ -2859,12 +2868,13 @@ function collectMergeIssues(){
     else if(!String(jp.text||'').trim()) issues.push({row:i,side:'jp',label:'左侧日文为空'});
     else if(visibleSubtitleLength(jp.text)>limit) issues.push({row:i,side:'jp',label:'日文超过 '+limit+' 字'});
     if(jp&&isBlankCnBlock(cn)) issues.push({row:i,side:'cn',label:'右侧中文为空'});
+    else if(cn&&visibleSubtitleLength(cn.text)>cnLimit) issues.push({row:i,side:'cn',label:'中文超过 '+cnLimit+' 字'});
   }
   return issues;
 }
 function jumpToNextMergeIssue(){
   const issues=collectMergeIssues();
-  if(!issues.length){setLog('ok','检查完成：没有空行、错位或超长日文');return;}
+  if(!issues.length){setLog('ok','检查完成：没有空行、错位或超长日文/中文');return;}
   let pos=issues.findIndex(x=>x.row>activeMergeRow||(x.row===activeMergeRow&&x.side!==activeMergeSide));
   if(pos<0) pos=0;
   const issue=issues[pos];
@@ -2899,6 +2909,9 @@ function renderMergePreview(){
     const limit=parseInt(document.getElementById('smartLengthLimit')?.value,10)||20;
     const jpLength=jp?visibleSubtitleLength(jp.text):0;
     const jpOver=jpLength>limit;
+    const cnLimit=25;
+    const cnLength=cn?visibleSubtitleLength(cnText):0;
+    const cnOver=cnLength>cnLimit;
     const cnClass=isBlankCnBlock(cn)?'mp-cn empty':'mp-cn';
     const jpEdited=jp&&jp._originalText!==undefined&&jp.text!==jp._originalText;
     const cnEdited=cn&&cn._originalText!==undefined&&cn.text!==cn._originalText;
@@ -2912,7 +2925,7 @@ function renderMergePreview(){
         ${jpCell}
       </div>
       <div class="${cnClass}">
-        <div class="mp-edit${cnEdited?' manual-edited':''}" contenteditable="true" data-type="cn" data-idx="${i}" onblur="saveMergeEdit(this)" title="${cnEdited?'已修改，Alt+R 恢复原文':'点击修改中文'}">${escHtml(cnText)}</div>
+        <div class="mp-edit${cnEdited?' manual-edited':''}${cnOver?' length-over':''}" contenteditable="true" data-type="cn" data-idx="${i}" onblur="saveMergeEdit(this)" title="${cnOver?'中文超过 25 字':(cnEdited?'已修改，Alt+R 恢复原文':'点击修改中文')}">${escHtml(cnText)}</div><span class="mp-length${cnOver?' over':''}">${cnLength}/${cnLimit}</span>
       </div>
       <div class="mp-btns">
         <button class="mp-btn" onclick="adjustRow(${i},-1)" title="右侧本句与上一句交换">↑</button>
@@ -2956,11 +2969,13 @@ function confirmMergeDownload(){
   const blankRight=mergeJpBlocks.reduce((n,_,i)=>n+(isBlankCnBlock(mergeCnBlocks[i])?1:0),0);
   const extraRight=Math.max(0,mergeCnBlocks.length-mergeJpBlocks.length);
   const overJp=mergeJpBlocks.reduce((n,b)=>n+(visibleSubtitleLength(b.text)>(parseInt(document.getElementById('smartLengthLimit')?.value,10)||20)?1:0),0);
-  if(!blankRight&&!extraRight&&!overJp) return true;
+  const overCn=mergeCnBlocks.reduce((n,b)=>n+(visibleSubtitleLength(b.text)>25?1:0),0);
+  if(!blankRight&&!extraRight&&!overJp&&!overCn) return true;
   const notes=[];
   if(blankRight) notes.push(blankRight+' 行右侧为空');
   if(extraRight) notes.push(extraRight+' 条右侧文字超出左侧时间轴');
   if(overJp) notes.push(overJp+' 行日文超过长度上限');
+  if(overCn) notes.push(overCn+' 行中文超过 25 字');
   return window.confirm('检查到：'+notes.join('，')+'。\n仍然继续下载吗？');
 }
 
@@ -3281,7 +3296,13 @@ const _sf=document.getElementById('symbolsField');
 if(_sf) _sf.addEventListener('input', saveSettings);
 MERGE_SETTING_IDS.forEach(id=>{
   const el=document.getElementById(id);
-  if(el)el.addEventListener('change',()=>{saveSettings();if(id==='smartLengthLimit'&&(mergeJpBlocks.length||mergeCnBlocks.length))renderMergePreview();});
+  if(el)el.addEventListener('change',()=>{
+    saveSettings();
+    if(id==='smartLengthLimit'){
+      if(mergeJpBlocks.length||mergeCnBlocks.length) renderMergePreview();
+      if(outputBlocks.length) renderPanels();
+    }
+  });
 });
 
 // ----------------------------------------
