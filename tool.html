@@ -1185,7 +1185,13 @@ async function authRenderOnlineAccounts(){
       <span>${escHtml(row.username||'未命名')}${row.is_admin?'　管理员':(row.approved?'　已批准':'　待审核')}</span>
       ${row.is_admin?'':`<button class="auth-mini-btn" type="button" data-online-user="${escAttr(row.user_id)}" data-online-approved="${row.approved?'1':'0'}" style="color:${row.approved?'var(--red)':'var(--green)'};">${row.approved?'停用':'批准'}</button>`}
     </div>`).join('')||'<div class="auth-account-row"><span>暂无注册申请</span></div>';
-  }catch(e){list.innerHTML='<div class="auth-error">'+escHtml(e.message||'读取申请失败')+'</div>';}
+  }catch(e){
+    const networkFailure=/failed to fetch|networkerror|load failed/i.test(String(e.message||''));
+    const detail=networkFailure
+      ? '无法连接审核接口。请刷新重试；若仍失败，请在 Supabase SQL Editor 重新完整执行最新版审核 SQL。'
+      : (e.message||'读取申请失败');
+    list.innerHTML='<div class="auth-error" style="line-height:1.6;">'+escHtml(detail)+'</div><button class="auth-mini-btn" type="button" data-auth-retry="1" style="width:100%;">重新连接</button>';
+  }
 }
 async function authSetOnlineApproval(userId,approved){
   const base=ONLINE_AUTH_CONFIG.url.replace(/\/$/,'');
@@ -1218,6 +1224,7 @@ document.getElementById('authAddUser').addEventListener('click',async()=>{
   authSave(data);document.getElementById('authNewUser').value='';document.getElementById('authNewPassword').value='';authRenderAccounts();
 });
 document.getElementById('authAccountList').addEventListener('click',e=>{
+  if(e.target.closest('[data-auth-retry]')){authRenderOnlineAccounts();return;}
   const onlineBtn=e.target.closest('[data-online-user]');
   if(onlineBtn){
     const approved=onlineBtn.dataset.onlineApproved!=='1';
