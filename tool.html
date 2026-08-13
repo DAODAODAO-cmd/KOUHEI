@@ -526,9 +526,12 @@
   .mp-time { font-family:'Space Mono',monospace; font-size:9px; color:var(--accent); }
   .mp-row.active-row { background:rgba(99,85,212,0.07); box-shadow:inset 3px 0 0 var(--accent); }
   .mp-edit.manual-edited { background:#fff4c7; border-radius:3px; padding:1px 3px; }
+  .mp-edit.length-over { background:#ffe9e7; box-shadow:inset 0 -2px 0 #e45b52; border-radius:3px; padding:1px 3px; }
+  .mp-length { display:inline-block; margin-left:5px; font:9px 'Space Mono',monospace; color:var(--text3); }
+  .mp-length.over { color:#d8463d; font-weight:700; }
   .merge-search-hit { outline:2px solid #e7a61a; outline-offset:1px; }
   .merge-searchbar {
-    display:none; align-items:center; gap:5px; padding:6px 10px;
+    display:none; align-items:center; flex-wrap:wrap; gap:5px; padding:6px 10px;
     border-bottom:1px solid var(--border); background:var(--bg2); flex-shrink:0;
   }
   .merge-searchbar.open { display:flex; }
@@ -538,9 +541,55 @@
   }
   .merge-searchbar button { width:auto; padding:5px 8px; font-size:11px; }
   .merge-shortcuts { font-size:9px; color:var(--text3); white-space:nowrap; }
+  .auth-header { margin-left:auto; display:none; align-items:center; gap:7px; }
+  .auth-user { font-size:11px; color:var(--text2); white-space:nowrap; }
+  .auth-mini-btn { border:1px solid var(--border); background:var(--bg2); color:var(--text2); border-radius:5px; padding:5px 9px; font-size:10px; cursor:pointer; }
+  .auth-mini-btn:hover { border-color:var(--accent); color:var(--accent); }
+  .auth-overlay { position:fixed; inset:0; z-index:12000; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(245,244,240,.96); backdrop-filter:blur(9px); }
+  .auth-card { width:min(360px,100%); background:#fff; border:1px solid var(--border); border-radius:14px; box-shadow:0 18px 60px rgba(35,27,70,.16); padding:24px; }
+  .auth-mark { width:42px; height:42px; display:flex; align-items:center; justify-content:center; border-radius:11px; background:rgba(99,85,212,.1); color:var(--accent); font-size:21px; margin-bottom:13px; }
+  .auth-card h2 { font-size:18px; margin-bottom:5px; }
+  .auth-card p { font-size:11px; color:var(--text3); line-height:1.6; margin-bottom:16px; }
+  .auth-field { display:flex; flex-direction:column; gap:5px; margin-bottom:10px; }
+  .auth-field label { font-size:10px; color:var(--text2); }
+  .auth-field input { width:100%; border:1px solid var(--border); border-radius:7px; padding:10px 11px; font-size:13px; background:var(--bg2); color:var(--text); outline:none; }
+  .auth-field input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(99,85,212,.08); }
+  .auth-error { min-height:17px; color:var(--red); font-size:10px; margin:2px 0 6px; }
+  .auth-submit { width:100%; border:0; border-radius:7px; padding:10px; background:var(--accent); color:#fff; font-size:12px; cursor:pointer; }
+  .auth-modal { position:fixed; inset:0; z-index:12010; display:none; align-items:center; justify-content:center; padding:20px; background:rgba(25,22,40,.35); }
+  .auth-modal.open { display:flex; }
+  .auth-account-list { display:flex; flex-direction:column; gap:6px; margin:12px 0; max-height:180px; overflow:auto; }
+  .auth-account-row { display:flex; align-items:center; gap:7px; padding:8px 9px; background:var(--bg3); border-radius:6px; font-size:11px; }
+  .auth-account-row span { flex:1; }
+  .auth-note { font-size:9px !important; color:var(--text3); margin:8px 0 0 !important; }
 </style>
 </head>
 <body>
+<div class="auth-overlay" id="authOverlay">
+  <form class="auth-card" id="authForm" autocomplete="off">
+    <div class="auth-mark">🔐</div>
+    <h2 id="authTitle">登录字幕工作台</h2>
+    <p id="authHint">请输入你的账号和密码。</p>
+    <div class="auth-field"><label>用户名</label><input id="authUsername" maxlength="30" required autocomplete="username"></div>
+    <div class="auth-field"><label>密码</label><input id="authPassword" type="password" minlength="6" required autocomplete="current-password"></div>
+    <div class="auth-field" id="authConfirmWrap" style="display:none;"><label>确认密码</label><input id="authConfirm" type="password" minlength="6" autocomplete="new-password"></div>
+    <div class="auth-error" id="authError"></div>
+    <button class="auth-submit" id="authSubmit" type="submit">登录</button>
+  </form>
+</div>
+
+<div class="auth-modal" id="authManageModal">
+  <div class="auth-card">
+    <h2>允许使用的账号</h2>
+    <p style="margin-bottom:10px;">只有这里列出的账号可以在本机浏览器登录。</p>
+    <div style="display:flex;gap:6px;"><input id="authNewUser" maxlength="30" placeholder="新用户名" style="min-width:0;flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;"><input id="authNewPassword" type="password" minlength="6" placeholder="密码（至少6位）" style="min-width:0;flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;"></div>
+    <div class="auth-error" id="authManageError"></div>
+    <button class="auth-submit" id="authAddUser" type="button">添加允许账号</button>
+    <div class="auth-account-list" id="authAccountList"></div>
+    <button class="auth-mini-btn" id="authManageClose" type="button" style="width:100%;">关闭</button>
+    <p class="auth-note">轻量本地保护：账号保存在当前浏览器，不会随 HTML 文件自动复制到其他电脑。</p>
+  </div>
+</div>
 <div id="autosaveStatus" aria-live="polite" style="position:fixed;right:14px;bottom:14px;z-index:9999;
   padding:7px 11px;border:1px solid var(--border);border-radius:999px;background:rgba(255,255,255,.94);
   color:var(--text3);font-size:11px;box-shadow:0 3px 14px rgba(0,0,0,.08);backdrop-filter:blur(8px);">
@@ -552,6 +601,11 @@
   <div class="header-text">
     <h1>专属字幕清理器</h1>
     <span class="ver">ASS / SRT / VTT → SRT</span>
+  </div>
+  <div class="auth-header" id="authHeader">
+    <span class="auth-user" id="authCurrentUser"></span>
+    <button class="auth-mini-btn" id="authManageBtn" type="button">账号管理</button>
+    <button class="auth-mini-btn" id="authLockBtn" type="button">锁定</button>
   </div>
 </header>
 
@@ -708,10 +762,14 @@
         <input type="number" id="mergeLimit" value="2" min="1" max="10">
       </div>
       <div class="num-row" style="margin-top:7px;">
-        <label for="mergeCharLimit">合并后最多字符数</label>
-        <input type="number" id="mergeCharLimit" value="15" min="1" max="100">
+        <label for="mergeCharLimit">日文每句 / 合并最多字符</label>
+        <input type="number" id="mergeCharLimit" value="20" min="1" max="100">
       </div>
-      <div class="edit-hint">默认 15。合并后超过此长度时保持为两条字幕；空格不计入字符数。</div>
+      <div class="option-row" style="margin-top:8px;">
+        <div><div class="option-name">日文超长时智能分段</div><div class="option-desc">优先按句号、问号、逗号和自然停顿拆分</div></div>
+        <label class="toggle"><input type="checkbox" id="opt_jp_smart_split" checked><div class="toggle-track"></div><div class="toggle-thumb"></div></label>
+      </div>
+      <div class="edit-hint">默认 20，主要控制 ➡/→ 续句合并。只计算文字和数字；空格、标点、括号、箭头等符号均不计数。</div>
     </div>
 
       </div>
@@ -754,11 +812,12 @@
         <button class="bi-offset-btn bi-undo-btn" onclick="undoMerge()" title="撤回 Ctrl+Z">↩</button>
       </div>
       <div id="mergeInfo" class="bi-info"></div>
+      <button class="btn btn-outline" id="btnMergeIssue" type="button" style="font-size:11px;padding:6px 9px;">⚠ 检查并跳到下一处问题</button>
       <details class="archive-details" style="padding-top:5px;">
         <summary>键盘快捷操作</summary>
         <div class="bi-info" style="line-height:1.8;padding-top:6px;">
           点击一行后：Alt+↑↓ 移动右侧；Ctrl+M 合右；Ctrl+Shift+M 合双；
-          Alt+A 插入空行；Alt+D 删除空行；Alt+R 恢复当前格原文；Ctrl+F 查找。
+          Alt+A 插入空行；Alt+D 删除空行；Alt+S 智能拆分日文；Alt+R 恢复当前格原文；Ctrl+F 查找；Ctrl+H 替换。
         </div>
       </details>
       <button class="btn btn-outline" id="btnRestoreProgress"
@@ -860,11 +919,14 @@
         </div>
         <div class="merge-searchbar" id="mergeSearchBar">
           <input id="mergeSearchInput" type="search" placeholder="查找日文或中文（Ctrl+F）">
+          <input id="mergeReplaceInput" type="text" placeholder="替换为（Ctrl+H）">
           <span id="mergeSearchCount" class="merge-shortcuts">0/0</span>
           <button class="btn btn-outline" id="btnMergeSearchPrev" type="button">↑</button>
           <button class="btn btn-outline" id="btnMergeSearchNext" type="button">↓</button>
+          <button class="btn btn-outline" id="btnMergeReplaceOne" type="button">替当前</button>
+          <button class="btn btn-outline" id="btnMergeReplaceAll" type="button">替全部</button>
           <button class="btn btn-outline" id="btnMergeSearchClose" type="button">关闭</button>
-          <span class="merge-shortcuts">Alt+↑↓ 移动　Ctrl+M 合右　Ctrl+Shift+M 合双　Alt+A/D 空行　Alt+R 恢复原文</span>
+          <span class="merge-shortcuts">Alt+↑↓ 移动　Ctrl+M 合右　Ctrl+Shift+M 合双　Alt+A/D 空行　Alt+S 分日　Alt+R 恢复</span>
         </div>
         <div class="compare-scroll" id="bilingualScroll"></div>
       </div>
@@ -875,6 +937,118 @@
 </div>
 
 <script>
+// ══════════════════════════════════════════════════════════════
+// LIGHTWEIGHT LOCAL LOGIN
+// Accounts are intentionally stored outside the workspace keys, so clearing
+// subtitle projects does not accidentally remove access control.
+// ══════════════════════════════════════════════════════════════
+const AUTH_STORAGE_KEY='kouhei_subtitle_access_v1';
+const AUTH_SESSION_KEY='kouhei_subtitle_session_v1';
+let authCurrentAccount=null;
+
+function authLoad(){
+  try{
+    const data=JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)||'null');
+    return data&&Array.isArray(data.accounts)?data:{version:1,accounts:[]};
+  }catch(e){return {version:1,accounts:[]};}
+}
+function authSave(data){localStorage.setItem(AUTH_STORAGE_KEY,JSON.stringify(data));}
+function authSalt(){
+  try{const a=new Uint32Array(4);crypto.getRandomValues(a);return Array.from(a,n=>n.toString(16)).join('');}
+  catch(e){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
+}
+async function authHash(password,salt){
+  const value=salt+'|'+password;
+  try{
+    if(crypto.subtle){
+      const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));
+      return 'sha256:'+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
+    }
+  }catch(e){}
+  // Compatibility fallback for local-file browsers without Web Crypto.
+  let h1=0xdeadbeef,h2=0x41c6ce57;
+  for(let i=0;i<value.length;i++){const c=value.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}
+  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
+  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
+  return 'local:'+(4294967296*(2097151&h2)+(h1>>>0)).toString(36);
+}
+function authSetMode(setup){
+  document.getElementById('authTitle').textContent=setup?'首次使用：创建管理员':'登录字幕工作台';
+  document.getElementById('authHint').textContent=setup?'请先创建管理员账号。以后可在右上角添加允许使用的人。':'请输入管理员分配给你的账号和密码。';
+  document.getElementById('authConfirmWrap').style.display=setup?'flex':'none';
+  document.getElementById('authConfirm').required=setup;
+  document.getElementById('authSubmit').textContent=setup?'创建并进入':'登录';
+  document.getElementById('authForm').dataset.setup=setup?'1':'0';
+}
+function authUnlock(account){
+  authCurrentAccount=account;
+  sessionStorage.setItem(AUTH_SESSION_KEY,account.username);
+  document.getElementById('authOverlay').style.display='none';
+  document.getElementById('authHeader').style.display='flex';
+  document.getElementById('authCurrentUser').textContent='👤 '+account.username;
+  document.getElementById('authManageBtn').style.display=account.admin?'inline-block':'none';
+}
+function authInit(){
+  const data=authLoad();
+  if(!data.accounts.length){authSetMode(true);return;}
+  authSetMode(false);
+  const sessionUser=sessionStorage.getItem(AUTH_SESSION_KEY);
+  const account=data.accounts.find(a=>a.username===sessionUser);
+  if(account) authUnlock(account);
+  else setTimeout(()=>document.getElementById('authUsername').focus(),30);
+}
+document.getElementById('authForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const error=document.getElementById('authError');error.textContent='';
+  const username=document.getElementById('authUsername').value.trim();
+  const password=document.getElementById('authPassword').value;
+  const setup=e.currentTarget.dataset.setup==='1';
+  if(!username||password.length<6){error.textContent='用户名不能为空，密码至少需要 6 位。';return;}
+  const data=authLoad();
+  if(setup){
+    if(password!==document.getElementById('authConfirm').value){error.textContent='两次输入的密码不一致。';return;}
+    const salt=authSalt();
+    const account={username,salt,hash:await authHash(password,salt),admin:true,createdAt:Date.now()};
+    data.accounts=[account];authSave(data);authUnlock(account);return;
+  }
+  const account=data.accounts.find(a=>a.username.toLocaleLowerCase()===username.toLocaleLowerCase());
+  if(!account||await authHash(password,account.salt)!==account.hash){error.textContent='用户名或密码不正确。';return;}
+  authUnlock(account);
+});
+document.getElementById('authLockBtn').addEventListener('click',()=>{
+  try{if(typeof flushWorkspaceSave==='function') flushWorkspaceSave();}catch(e){}
+  sessionStorage.removeItem(AUTH_SESSION_KEY);location.reload();
+});
+function authRenderAccounts(){
+  const data=authLoad();
+  document.getElementById('authAccountList').innerHTML=data.accounts.map((a,i)=>
+    `<div class="auth-account-row"><span>${escHtml(a.username)}${a.admin?'　管理员':''}</span>${a.admin?'':`<button class="auth-mini-btn" type="button" data-auth-delete="${i}" style="color:var(--red);">删除</button>`}</div>`
+  ).join('');
+}
+document.getElementById('authManageBtn').addEventListener('click',()=>{
+  if(!authCurrentAccount?.admin) return;
+  document.getElementById('authManageModal').classList.add('open');authRenderAccounts();
+});
+document.getElementById('authManageClose').addEventListener('click',()=>document.getElementById('authManageModal').classList.remove('open'));
+document.getElementById('authAddUser').addEventListener('click',async()=>{
+  const error=document.getElementById('authManageError');error.textContent='';
+  const username=document.getElementById('authNewUser').value.trim();
+  const password=document.getElementById('authNewPassword').value;
+  const data=authLoad();
+  if(!username||password.length<6){error.textContent='请输入用户名和至少 6 位密码。';return;}
+  if(data.accounts.some(a=>a.username.toLocaleLowerCase()===username.toLocaleLowerCase())){error.textContent='这个用户名已经存在。';return;}
+  const salt=authSalt();data.accounts.push({username,salt,hash:await authHash(password,salt),admin:false,createdAt:Date.now()});
+  authSave(data);document.getElementById('authNewUser').value='';document.getElementById('authNewPassword').value='';authRenderAccounts();
+});
+document.getElementById('authAccountList').addEventListener('click',e=>{
+  const btn=e.target.closest('[data-auth-delete]');if(!btn)return;
+  const data=authLoad(),index=parseInt(btn.dataset.authDelete,10),account=data.accounts[index];
+  if(!account||account.admin)return;
+  if(!window.confirm('确定删除账号“'+account.username+'”吗？'))return;
+  data.accounts.splice(index,1);authSave(data);authRenderAccounts();
+});
+authInit();
+
 // ----------------------------------------
 let rawText='', outputSRT='', currentTab='compare';
 let parsedBlocks=[], outputBlocks=[], srcMapGlobal={};
@@ -1049,6 +1223,108 @@ function parseSRT(text){
   return blocks;
 }
 
+function isSubtitleTextChar(char){
+  // Count actual written content only. Japanese kanji/kana, Latin letters and
+  // numbers count; punctuation, brackets, arrows, emoji and spaces do not.
+  try{return /[\p{L}\p{N}]/u.test(char);}
+  catch(e){return /[A-Za-z0-9\u3040-\u30ff\u3400-\u9fff\uff10-\uff19\uff21-\uff3a\uff41-\uff5a]/.test(char);}
+}
+function visibleSubtitleLength(text){
+  return Array.from(String(text||'')).reduce((n,ch)=>n+(isSubtitleTextChar(ch)?1:0),0);
+}
+function srtTimeToMs(value){
+  const m=String(value||'').match(/(\d{2}):(\d{2}):(\d{2}),(\d{3})/);
+  return m?(((+m[1]*60+(+m[2]))*60+(+m[3]))*1000+(+m[4])):0;
+}
+function msToSrtTime(value){
+  let ms=Math.max(0,Math.round(value));
+  const h=Math.floor(ms/3600000);ms%=3600000;
+  const m=Math.floor(ms/60000);ms%=60000;
+  const s=Math.floor(ms/1000);ms%=1000;
+  return String(h).padStart(2,'0')+':'+String(m).padStart(2,'0')+':'+String(s).padStart(2,'0')+','+String(ms).padStart(3,'0');
+}
+function smartSplitJapaneseText(text,limit){
+  const max=Math.max(1,parseInt(limit,10)||15);
+  const clean=String(text||'').replace(/[ \t]+/g,' ').trim();
+  if(!/[\u3040-\u30ff]/.test(clean)||visibleSubtitleLength(clean)<=max) return clean?[clean]:[];
+  const chars=Array.from(clean);
+  const result=[];
+  let rest=chars;
+  const strong=/[。！？!?…]/;
+  const soft=/[、，,：:；;]/;
+  // Only use clause-level endings here. Single particles such as は/に/で are
+  // intentionally excluded because splitting after them often breaks Japanese unnaturally.
+  const particles=['けれど','けど','くせに','から','ので','のに','のなら','なら','って','では','には','ても','のは','のが','のを','んだね','んだよ'];
+  while(visibleSubtitleLength(rest.join(''))>max){
+    const remainingText=visibleSubtitleLength(rest.join(''));
+    const minText=Math.max(2,Math.floor(max*0.48));
+    // Avoid producing a tiny final fragment (for example 15 + 2 chars).
+    const targetText=(remainingText-max<minText)?Math.ceil(remainingText/2):max;
+    let scanEnd=0,textCount=0;
+    while(scanEnd<rest.length&&textCount<targetText){
+      if(isSubtitleTextChar(rest[scanEnd])) textCount++;
+      scanEnd++;
+    }
+    // Keep punctuation immediately following the last counted character in the
+    // candidate window, so a 。/！ at the boundary remains a preferred cut.
+    while(scanEnd<rest.length&&!isSubtitleTextChar(rest[scanEnd])) scanEnd++;
+    const scan=rest.slice(0,scanEnd);
+    let cut=0;
+    let seenText=0;
+    for(let i=0;i<scan.length;i++){
+      if(isSubtitleTextChar(scan[i])) seenText++;
+      if(seenText>=minText&&strong.test(scan[i])) cut=i+1;
+    }
+    if(!cut){
+      seenText=0;
+      for(let i=0;i<scan.length;i++){
+        if(isSubtitleTextChar(scan[i])) seenText++;
+        if(seenText>=minText&&soft.test(scan[i])) cut=i+1;
+      }
+    }
+    if(!cut){
+      const head=scan.join('');
+      for(const p of particles){
+        const at=head.lastIndexOf(p);
+        if(at>=0){
+          const candidate=head.slice(0,at+p.length);
+          const candidateText=visibleSubtitleLength(candidate);
+          const candidateRaw=Array.from(candidate).length;
+          if(candidateText>=minText&&candidateText<=max&&candidateRaw>cut) cut=candidateRaw;
+        }
+      }
+    }
+    if(!cut){
+      seenText=visibleSubtitleLength(scan.join(''));
+      for(let i=scan.length-1;i>=0;i--){
+        if(isSubtitleTextChar(scan[i])) seenText--;
+        if(seenText>=minText&&/\s/.test(scan[i])){cut=i+1;break;}
+      }
+    }
+    if(!cut) cut=scan.length;
+    let part=rest.slice(0,cut).join('').trim();
+    rest=rest.slice(cut);
+    while(rest.length&&/\s/.test(rest[0])) rest.shift();
+    if(part) result.push(part);
+  }
+  const tail=rest.join('').trim();
+  if(tail) result.push(tail);
+  return result;
+}
+function splitTimedBlock(block,segments){
+  if(!segments||segments.length<=1) return [{...block}];
+  const start=srtTimeToMs(block.start),end=srtTimeToMs(block.end);
+  const duration=Math.max(segments.length,end-start);
+  const weights=segments.map(s=>Math.max(1,visibleSubtitleLength(s)));
+  const total=weights.reduce((a,b)=>a+b,0);
+  let used=0;
+  return segments.map((text,i)=>{
+    const segStart=start+duration*(used/total);used+=weights[i];
+    const segEnd=i===segments.length-1?end:start+duration*(used/total);
+    return {...block,text,start:msToSrtTime(segStart),end:msToSrtTime(segEnd)};
+  });
+}
+
 // ----------------------------------------
 function processBlocks(blocks){
   const opts={
@@ -1063,9 +1339,10 @@ function processBlocks(blocks){
     digit:      document.getElementById('opt_digit').checked,
     textreplace:document.getElementById('opt_textreplace').checked,
     mergesame:  document.getElementById('opt_mergesame').checked,
+    jpSmartSplit:document.getElementById('opt_jp_smart_split')?.checked!==false,
   };
   const mergeLimit=parseInt(document.getElementById('mergeLimit').value)||2;
-  const mergeCharLimit=parseInt(document.getElementById('mergeCharLimit').value)||15;
+  const mergeCharLimit=parseInt(document.getElementById('mergeCharLimit').value)||20;
   const symbolChars=document.getElementById('symbolsField').value;
   const textReplace=getReplacements();
   function prepareGroupText(items){
@@ -1081,20 +1358,40 @@ function processBlocks(blocks){
     if(opts.digit&&!opts.width) text=formatDigit(text);
     return text.trim();
   }
-  function visibleCharCount(text){
-    return Array.from(String(text||'').replace(/\s/g,'')).length;
-  }
+  function visibleCharCount(text){ return visibleSubtitleLength(text); }
   function canAutoMerge(items){
     return visibleCharCount(prepareGroupText(items))<=mergeCharLimit;
   }
+  function endsWithMergeArrow(text){
+    const plain=String(text||'')
+      .replace(/<[^>]*>/g,'')
+      .replace(/\{[^}]*\}/g,'')
+      .trim();
+    return /[→➡]\s*$/.test(plain);
+  }
+  const STRUCTURE_PAIRS=[
+    ['《','》'],['＜','＞'],['〈','〉'],
+    ['「','」'],['｢','｣'],['『','』'],
+    ['（','）'],['((','))'],['(',')'],
+    ['[',']'],['［','］'],
+  ];
+  function completesCrossLinePair(items){
+    // Structural override is deliberately limited to exactly two adjacent rows.
+    // A three-line 《...》 passage must not collapse into one oversized subtitle.
+    if(!items||items.length!==2) return false;
+    const first=String(items[0].text||'');
+    const rest=items.slice(1).map(b=>String(b.text||'')).join(' ');
+    return STRUCTURE_PAIRS.some(([l,r])=>first.includes(l)&&!first.includes(r)&&rest.includes(r));
+  }
   let _mergedSameCount=0;
-  const stats={merged:0,converted:0};
+  const stats={merged:0,converted:0,smartSplit:0};
   const out=[];
   const srcMap={};  // originalIndex -> outBlock (or null if deleted/skipped)
   let i=0;
 
   while(i<blocks.length){
     let block={...blocks[i]};
+    let preserveCompletePair=false;
     if(opts.rubi && block.style==='rubi'){srcMap[i]=null;i++;continue;}
 
     // Same-timestamp merge: collect all blocks with identical start+end
@@ -1116,8 +1413,9 @@ function processBlocks(blocks){
             _seen.add(_t);_lines.push(_t);_sameBlocks.push({...blocks[_si]});
           }
         }
-        if(canAutoMerge(_sameBlocks)){
-          block={...block, text:_lines.join(' ')};
+        preserveCompletePair=opts.mergePair&&completesCrossLinePair(_sameBlocks);
+        if(canAutoMerge(_sameBlocks)||preserveCompletePair){
+          block={...block, text:_lines.join(preserveCompletePair?'':' ')};
           _mergedSameCount+=_sameEnd-i;
         }else{
           _sameEnd=i;
@@ -1129,7 +1427,7 @@ function processBlocks(blocks){
 
     // Arrow merge: all formats
     if(opts.mergeArrow){
-      while(j<blocks.length && j<i+mergeLimit && /[→➡]\s*$/.test(group[group.length-1].text) &&
+      while(j<blocks.length && j<i+mergeLimit && endsWithMergeArrow(group[group.length-1].text) &&
             canAutoMerge([...group,blocks[j]])){
         group.push({...blocks[j]});j++;
       }
@@ -1137,32 +1435,23 @@ function processBlocks(blocks){
 
     // Pair bracket merge: all formats, supports multi-char tokens like (( ))
     if(opts.mergePair && group.length===1){
-      const PAIRS=[
-        ['《','》'],['<','>'],['＜','＞'],['〈','〉'],
-        ['「','」'],['｢','｣'],['『','』'],
-        ['（','）'],['((','))'],['(',')'],
-        ['[',']'],['［','］'],
-      ];
       let combined=group[0].text;
       let matchedPair=null;
-      for(const [l,r] of PAIRS){
+      for(const [l,r] of STRUCTURE_PAIRS){
         if(combined.includes(l) && !combined.includes(r)){
           matchedPair=[l,r]; break;
         }
       }
       if(matchedPair){
         const [pl,pr]=matchedPair;
-        let jj=i+1;
-        const pairGroup=[group[0]];
-        // Search until the closing bracket, then apply only if the merged result is short enough.
-        while(jj<blocks.length){
-          combined+=' '+blocks[jj].text;
-          pairGroup.push({...blocks[jj]});jj++;
-          if(combined.includes(pr)) break;
-        }
-        if(combined.includes(pr)&&canAutoMerge(pairGroup)){
+        const next=blocks[i+1];
+        const pairGroup=next?[group[0],{...next}]:[group[0]];
+        // Only the immediately following row may complete the pair. This keeps
+        // the useful two-row repair without ever turning a 3+ row passage into one line.
+        if(next&&String(next.text||'').includes(pr)){
           group=pairGroup;
-          j=Math.max(j,jj);
+          j=Math.max(j,i+2);
+          preserveCompletePair=true;
         }
       }
     }
@@ -1170,15 +1459,16 @@ function processBlocks(blocks){
     if(group.length>1) stats.merged+=group.length;
 
     // Split group into chunks of mergeLimit, each chunk becomes one output block
-    const _limit = mergeLimit > 0 ? mergeLimit : group.length;
+    const _limit = preserveCompletePair ? group.length : (mergeLimit > 0 ? mergeLimit : group.length);
     for(let ci=0; ci<group.length; ci+=_limit){
       const chunk = group.slice(ci, ci+_limit);
       const chunkStart = i + ci;
       const chunkEnd   = chunkStart + chunk.length - 1;
+      const chunkJoiner=preserveCompletePair?'':' ';
 
       // Dual speaker: detect on raw text BEFORE cleanText removes （）brackets
-      let rawJoined=chunk.map(b=>b.text.replace(/\{[^}]*\}/g,'').replace(/<[^>]*>/g,'').replace(/\\N/gi,' ').trim()).join(' ');
-      let text=chunk.map(b=>cleanText(b.text,opts,symbolChars)).join(' ');
+      let rawJoined=chunk.map(b=>b.text.replace(/\{[^}]*\}/g,'').replace(/<[^>]*>/g,'').replace(/\\N/gi,' ').trim()).join(chunkJoiner);
+      let text=chunk.map(b=>cleanText(b.text,opts,symbolChars)).join(chunkJoiner);
       text=cleanText(text,opts,symbolChars);
       if(opts.mergeArrow) text=text.replace(/[→➡]\s*/g,'');
 
@@ -1201,15 +1491,40 @@ function processBlocks(blocks){
         _changed:text!==blocks[i].text,
         _dual:opts.dual&&text.startsWith('-'),
         _srcStart:chunkStart,
-        _srcEnd:chunkEnd,
+        _srcEnd:(_sameEnd>i&&group.length===1)?_sameEnd:chunkEnd,
       };
-      out.push(outBlock);
-      for(let s=chunkStart;s<=chunkEnd;s++) srcMap[s]=outBlock;
+      let splitParts=[text];
+      if(opts.jpSmartSplit&&!preserveCompletePair){
+        // Use a punctuation-preserving copy to decide the cut points. The normal
+        // symbol cleanup may remove 。、 etc., but those marks still guide splitting.
+        const guideOpts={...opts,symbols:false};
+        let guideText=chunk.map(b=>cleanText(b.text,guideOpts,symbolChars)).join(chunkJoiner);
+        guideText=cleanText(guideText,guideOpts,symbolChars);
+        if(opts.mergeArrow) guideText=guideText.replace(/[→➡]\s*/g,'');
+        if(opts.dual){const d=handleDualSpeaker(rawJoined,guideText);if(d!==null) guideText=d;}
+        if(opts.textreplace){for(const [k,v] of Object.entries(textReplace)) guideText=guideText.replaceAll(k,v);}
+        if(opts.width) guideText=convertWidth(guideText);
+        if(opts.digit&&!opts.width) guideText=formatDigit(guideText);
+        const guideParts=smartSplitJapaneseText(guideText,mergeCharLimit);
+        if(guideParts.length>1){
+          splitParts=guideParts.map(part=>{
+            let cleaned=cleanText(part,opts,symbolChars);
+            if(opts.textreplace){for(const [k,v] of Object.entries(textReplace)) cleaned=cleaned.replaceAll(k,v);}
+            if(opts.width) cleaned=convertWidth(cleaned);
+            if(opts.digit&&!opts.width) cleaned=formatDigit(cleaned);
+            return cleaned.trim();
+          }).filter(Boolean);
+        }
+      }
+      const timedParts=splitTimedBlock(outBlock,splitParts);
+      if(timedParts.length>1) stats.smartSplit+=timedParts.length-1;
+      timedParts.forEach(part=>{part.num=out.length+1;out.push(part);});
+      for(let s=chunkStart;s<=chunkEnd;s++) srcMap[s]=timedParts[0];
     }
     // also map same-timestamp secondary indices (they point to same outBlock as first)
     if(opts.mergesame && _sameEnd>i){
       const _firstOut=out.length>0?out[out.length-1]:null;
-      if(_firstOut) for(let s=j;s<=_sameEnd;s++) srcMap[s]=_firstOut;
+      if(_firstOut) for(let s=i;s<=_sameEnd;s++) srcMap[s]=_firstOut;
     }
     i=Math.max(j,_sameEnd+1);
   }
@@ -1347,7 +1662,8 @@ document.getElementById('btnProcess').addEventListener('click',()=>{
     document.getElementById('btnDownload').disabled=false;
     renderPanels();
     const _sameNote=result.mergedSameCount>0?`，同时间戳合并 ${result.mergedSameCount} 条`:'';
-    setLog('ok',`处理完成！${parsedBlocks.length} 条 → ${outputBlocks.length} 条，合并 ${result.stats.merged} 行，转换 ${result.stats.converted} 行${_sameNote}`);
+    const _splitNote=result.stats.smartSplit>0?`，日文智能拆分 ${result.stats.smartSplit} 处`:'';
+    setLog('ok',`处理完成！${parsedBlocks.length} 条 → ${outputBlocks.length} 条，合并 ${result.stats.merged} 行，转换 ${result.stats.converted} 行${_sameNote}${_splitNote}`);
   }catch(e){setLog('err','处理出错：'+e.message);console.error(e);}
 });
 
@@ -1878,6 +2194,9 @@ document.addEventListener('keydown',e=>{
   if((e.ctrlKey||e.metaKey)&&key==='f'){
     e.preventDefault();openMergeSearch();return;
   }
+  if((e.ctrlKey||e.metaKey)&&key==='h'){
+    e.preventDefault();openMergeSearch(true);return;
+  }
   if(editing){
     if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();e.target.blur();}
     else if(e.key==='Escape'){e.preventDefault();e.target.blur();}
@@ -1903,6 +2222,9 @@ document.addEventListener('keydown',e=>{
   }
   if(e.altKey&&key==='d'){
     e.preventDefault();removeBlankRow(activeMergeRow);selectMergeRow(activeMergeRow,'cn',true);return;
+  }
+  if(e.altKey&&key==='s'){
+    e.preventDefault();smartSplitJpRow(activeMergeRow);return;
   }
   if(e.altKey&&key==='r'){
     e.preventDefault();restoreMergeOriginal(activeMergeRow,activeMergeSide);return;
@@ -1945,6 +2267,31 @@ function restoreMergeOriginal(index,type){
   renderMergePreview();
   saveMergeState();
   setLog('ok','已恢复第 '+(index+1)+' 行'+(type==='jp'?'左侧':'右侧')+'原文');
+}
+
+function smartSplitJpRow(index){
+  const block=mergeJpBlocks[index];
+  if(!block) return;
+  const limit=parseInt(document.getElementById('mergeCharLimit')?.value,10)||20;
+  const segments=smartSplitJapaneseText(block.text,limit);
+  if(segments.length<=1){
+    setLog('warn','第 '+(index+1)+' 行不需要拆分，或没有识别到日文');
+    return;
+  }
+  pushUndo();
+  const parts=splitTimedBlock(block,segments).map((part,i)=>({
+    ...part,
+    num:(block.num||index+1)+i,
+    _originalText:segments[i],
+  }));
+  mergeJpBlocks.splice(index,1,...parts);
+  // 保留当前右侧译文，其余日文段落先配空槽；后面的译文只下移，不会被覆盖。
+  const blanks=Array.from({length:parts.length-1},()=>makeEmptyCnBlock());
+  mergeCnBlocks.splice(index+1,0,...blanks);
+  activeMergeRow=index;activeMergeSide='jp';
+  renderMergePreview();
+  saveMergeState();
+  setLog('ok','已按日文停顿拆成 '+parts.length+' 句；新增的右侧空行可手动填写或调整');
 }
 
 function mergeUpRow(i){
@@ -2000,10 +2347,10 @@ function mergeBothUpRow(i){
   setLog('ok','已将左右第 '+(i+1)+' 行一起合并到上一行');
 }
 
-function openMergeSearch(){
+function openMergeSearch(focusReplace=false){
   const bar=document.getElementById('mergeSearchBar');
   bar.classList.add('open');
-  const input=document.getElementById('mergeSearchInput');
+  const input=document.getElementById(focusReplace?'mergeReplaceInput':'mergeSearchInput');
   input.focus(); input.select();
   updateMergeSearch();
 }
@@ -2040,6 +2387,55 @@ function moveMergeSearch(delta){
   mergeSearchPos=(mergeSearchPos+delta+mergeSearchMatches.length)%mergeSearchMatches.length;
   showMergeSearchMatch();
 }
+function replaceMergeSearch(all=false){
+  const query=document.getElementById('mergeSearchInput').value;
+  const replacement=document.getElementById('mergeReplaceInput').value;
+  if(!query){setLog('warn','请先输入要查找的文字');return;}
+  if(!mergeSearchMatches.length){setLog('warn','没有找到可替换的内容');return;}
+  const targets=all?[...mergeSearchMatches]:[mergeSearchMatches[mergeSearchPos]];
+  const escaped=query.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+  const re=new RegExp(escaped,'gi');
+  pushUndo();
+  let changed=0;
+  targets.forEach(hit=>{
+    const block=hit.side==='jp'?mergeJpBlocks[hit.row]:mergeCnBlocks[hit.row];
+    if(!block||!re.test(block.text||'')){re.lastIndex=0;return;}
+    re.lastIndex=0;
+    if(block._originalText===undefined) block._originalText=block.text;
+    block.text=String(block.text||'').replace(re,replacement);
+    if(hit.side==='cn') block._blank=!block.text.trim();
+    changed++;
+    re.lastIndex=0;
+  });
+  if(!changed){mergeUndoStack.pop();return;}
+  renderMergePreview();saveMergeState();
+  setLog('ok','已替换 '+changed+' 处字幕内容，可用 Ctrl+Z 撤回');
+}
+
+function collectMergeIssues(){
+  const limit=parseInt(document.getElementById('mergeCharLimit')?.value,10)||20;
+  const count=Math.max(mergeJpBlocks.length,mergeCnBlocks.length);
+  const issues=[];
+  for(let i=0;i<count;i++){
+    const jp=mergeJpBlocks[i],cn=mergeCnBlocks[i];
+    if(!jp) issues.push({row:i,side:'cn',label:'右侧多出且没有左侧时间轴'});
+    else if(!String(jp.text||'').trim()) issues.push({row:i,side:'jp',label:'左侧日文为空'});
+    else if(visibleSubtitleLength(jp.text)>limit) issues.push({row:i,side:'jp',label:'日文超过 '+limit+' 字'});
+    if(jp&&isBlankCnBlock(cn)) issues.push({row:i,side:'cn',label:'右侧中文为空'});
+  }
+  return issues;
+}
+function jumpToNextMergeIssue(){
+  const issues=collectMergeIssues();
+  if(!issues.length){setLog('ok','检查完成：没有空行、错位或超长日文');return;}
+  let pos=issues.findIndex(x=>x.row>activeMergeRow||(x.row===activeMergeRow&&x.side!==activeMergeSide));
+  if(pos<0) pos=0;
+  const issue=issues[pos];
+  selectMergeRow(issue.row,issue.side,true);
+  const el=document.querySelector(`.mp-edit[data-type="${issue.side}"][data-idx="${issue.row}"]`);
+  if(el){el.classList.add('merge-search-hit');setTimeout(()=>el.classList.remove('merge-search-hit'),1400);}
+  setLog('warn','问题 '+(pos+1)+'/'+issues.length+'：第 '+(issue.row+1)+' 行 '+issue.label);
+}
 
 document.getElementById('mergeSearchInput').addEventListener('input',updateMergeSearch);
 document.getElementById('mergeSearchInput').addEventListener('keydown',e=>{
@@ -2048,7 +2444,10 @@ document.getElementById('mergeSearchInput').addEventListener('keydown',e=>{
 });
 document.getElementById('btnMergeSearchPrev').addEventListener('click',()=>moveMergeSearch(-1));
 document.getElementById('btnMergeSearchNext').addEventListener('click',()=>moveMergeSearch(1));
+document.getElementById('btnMergeReplaceOne').addEventListener('click',()=>replaceMergeSearch(false));
+document.getElementById('btnMergeReplaceAll').addEventListener('click',()=>replaceMergeSearch(true));
 document.getElementById('btnMergeSearchClose').addEventListener('click',closeMergeSearch);
+document.getElementById('btnMergeIssue').addEventListener('click',jumpToNextMergeIssue);
 
 function renderMergePreview(){
   const info=document.getElementById('mergeInfo');
@@ -2060,12 +2459,15 @@ function renderMergePreview(){
     const ci=getCnForJp(i);
     const cn=(ci>=0 && ci<mergeCnBlocks.length)?mergeCnBlocks[ci]:null;
     const cnText=cn?(cn.text||''):'';
+    const limit=parseInt(document.getElementById('mergeCharLimit')?.value,10)||20;
+    const jpLength=jp?visibleSubtitleLength(jp.text):0;
+    const jpOver=jpLength>limit;
     const cnClass=isBlankCnBlock(cn)?'mp-cn empty':'mp-cn';
     const jpEdited=jp&&jp._originalText!==undefined&&jp.text!==jp._originalText;
     const cnEdited=cn&&cn._originalText!==undefined&&cn.text!==cn._originalText;
     const jpCell=jp
       ? `<div class="mp-time">${jp.start.slice(0,8)}</div>
-         <div class="mp-edit${jpEdited?' manual-edited':''}" contenteditable="true" data-type="jp" data-idx="${i}" onblur="saveMergeEdit(this)" title="${jpEdited?'已修改，Alt+R 恢复原文':'点击修改日文'}">${escHtml(jp.text)}</div>`
+         <div class="mp-edit${jpEdited?' manual-edited':''}${jpOver?' length-over':''}" contenteditable="true" data-type="jp" data-idx="${i}" onblur="saveMergeEdit(this)" title="${jpOver?'超过 '+limit+' 字，可点“分日”智能拆分':(jpEdited?'已修改，Alt+R 恢复原文':'点击修改日文')}">${escHtml(jp.text)}</div><span class="mp-length${jpOver?' over':''}">${jpLength}/${limit}</span>`
       : `<div class="mp-time">未匹配</div><div style="color:var(--text3);">— 左侧无对应行 —</div>`;
     return `<div class="mp-row${i===activeMergeRow?' active-row':''}" data-merge-row="${i}">
       <div class="mp-idx">${i+1}</div>
@@ -2080,6 +2482,7 @@ function renderMergePreview(){
         <button class="mp-btn" onclick="adjustRow(${i},+1)" title="右侧本句与下一句交换">↓</button>
         <button class="mp-btn mp-btn-merge" onclick="mergeUpRow(${i})" title="只把当前右侧文字合并到上一句">合右</button>
         <button class="mp-btn mp-btn-merge" onclick="mergeBothUpRow(${i})" title="当前左右文字一起合并到上一行">合双</button>
+        <button class="mp-btn" onclick="smartSplitJpRow(${i})" title="按标点和日文自然停顿智能拆分当前左侧字幕">分日</button>
         <button class="mp-btn" onclick="insertBlankRow(${i})" title="在这里插入右侧空行，后面的右侧字幕下移">＋空</button>
         <button class="mp-btn" onclick="removeBlankRow(${i})" title="只删除这里真正的右侧空行">−空</button>
       </div>
@@ -2112,8 +2515,21 @@ document.getElementById('bilingualScroll').addEventListener('focusin',e=>{
   if(edit) selectMergeRow(parseInt(edit.dataset.idx,10),edit.dataset.type,false);
 });
 
+function confirmMergeDownload(){
+  const blankRight=mergeJpBlocks.reduce((n,_,i)=>n+(isBlankCnBlock(mergeCnBlocks[i])?1:0),0);
+  const extraRight=Math.max(0,mergeCnBlocks.length-mergeJpBlocks.length);
+  const overJp=mergeJpBlocks.reduce((n,b)=>n+(visibleSubtitleLength(b.text)>(parseInt(document.getElementById('mergeCharLimit')?.value,10)||20)?1:0),0);
+  if(!blankRight&&!extraRight&&!overJp) return true;
+  const notes=[];
+  if(blankRight) notes.push(blankRight+' 行右侧为空');
+  if(extraRight) notes.push(extraRight+' 条右侧文字超出左侧时间轴');
+  if(overJp) notes.push(overJp+' 行日文超过长度上限');
+  return window.confirm('检查到：'+notes.join('，')+'。\n仍然继续下载吗？');
+}
+
 document.getElementById('btnMergeDownload').addEventListener('click',()=>{
   if(!mergeJpBlocks.length) return;
+  if(!confirmMergeDownload()) return;
   let num=1;
   const parts=[];
   for(let i=0;i<mergeJpBlocks.length;i++){
@@ -2369,7 +2785,7 @@ function saveSettings(){
   const toggles={};
   ['opt_width','opt_symbols','opt_speaker','opt_rubi','opt_comments',
    'opt_merge_pair','opt_merge_arrow','opt_dual','opt_digit','opt_textreplace',
-   'opt_mergesame','opt_srt_blank2'].forEach(id=>{
+   'opt_mergesame','opt_srt_blank2','opt_jp_smart_split'].forEach(id=>{
     const el=document.getElementById(id);
     if(el) toggles[id]=el.checked;
   });
@@ -2410,7 +2826,13 @@ function loadSettings(){
   const ml=STORE.load('mergeLimit',null);
   if(ml!==null){ const mle=document.getElementById('mergeLimit'); if(mle) mle.value=ml; }
   const mcl=STORE.load('mergeCharLimit',null);
-  if(mcl!==null){ const mcle=document.getElementById('mergeCharLimit'); if(mcle) mcle.value=mcl; }
+  if(mcl!==null){
+    const mcle=document.getElementById('mergeCharLimit');
+    // Migrate projects created when the old default was 15 to the new 20-char rule.
+    const migrated=String(mcl)==='15'?'20':mcl;
+    if(mcle) mcle.value=migrated;
+    if(String(mcl)==='15') STORE.save('mergeCharLimit','20');
+  }
   // replacements
   const rows=STORE.load('replacements',null);
   if(rows&&rows.length>0) buildReplaceTable(rows);
@@ -2425,7 +2847,7 @@ if(_sf) _sf.addEventListener('input', saveSettings);
 const _ml=document.getElementById('mergeLimit');
 if(_ml) _ml.addEventListener('change', saveSettings);
 const _mcl=document.getElementById('mergeCharLimit');
-if(_mcl) _mcl.addEventListener('change', saveSettings);
+if(_mcl) _mcl.addEventListener('change', ()=>{saveSettings();if(mergeJpBlocks.length||mergeCnBlocks.length) renderMergePreview();});
 
 // ----------------------------------------
 function saveFileState(){
@@ -2584,7 +3006,7 @@ const _clearSavedBtn=document.getElementById('btnClearSaved');
 if(_clearSavedBtn){
   _clearSavedBtn.addEventListener('click',async()=>{
     const ok=window.confirm(
-      '确定清除全部数据吗？\n\n这会删除所有项目、历史版本、字幕进度和设置，且无法撤销。'
+      '确定清除全部字幕数据吗？\n\n这会删除所有项目、历史版本、字幕进度和设置，且无法撤销；登录账号不会删除。'
     );
     if(!ok) return;
     _isClearingStorage=true;
@@ -2741,6 +3163,7 @@ document.getElementById('btnRestoreProgress').addEventListener('click',()=>{
 // Left content + right timeline download
 document.getElementById('btnMergeRightOnly').addEventListener('click',()=>{
   if(!mergeCnBlocks.length) return;
+  if(!confirmMergeDownload()) return;
   // Right text + Left timeline: iterate cn blocks, use jp timeline
   let num=1; const parts=[];
   for(let i=0;i<mergeJpBlocks.length;i++){
