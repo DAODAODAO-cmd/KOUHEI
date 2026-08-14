@@ -590,14 +590,11 @@
 
 <div class="auth-modal" id="authManageModal">
   <div class="auth-card">
-    <h2>允许使用的账号</h2>
-    <p id="authManageHint" style="margin-bottom:10px;">只有这里列出的账号可以在本机浏览器登录。</p>
-    <div id="authLocalCreate" style="display:flex;gap:6px;"><input id="authNewUser" maxlength="30" placeholder="新用户名" style="min-width:0;flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;"><input id="authNewPassword" type="password" minlength="6" placeholder="密码（至少6位）" style="min-width:0;flex:1;padding:8px;border:1px solid var(--border);border-radius:6px;"></div>
+    <h2>注册申请审核</h2>
+    <p id="authManageHint" style="margin-bottom:10px;">批准后对方重新登录即可进入；停用后将无法再次登录。</p>
     <div class="auth-error" id="authManageError"></div>
-    <button class="auth-submit" id="authAddUser" type="button">添加允许账号</button>
     <div class="auth-account-list" id="authAccountList"></div>
     <button class="auth-mini-btn" id="authManageClose" type="button" style="width:100%;">关闭</button>
-    <p class="auth-note">轻量本地保护：账号保存在当前浏览器，不会随 HTML 文件自动复制到其他电脑。</p>
   </div>
 </div>
 
@@ -931,16 +928,11 @@
 
 <script>
 // ══════════════════════════════════════════════════════════════
-// LIGHTWEIGHT LOCAL LOGIN
-// Accounts are intentionally stored outside the workspace keys, so clearing
-// subtitle projects does not accidentally remove access control.
+// ONLINE ACCESS CONTROL
 // ══════════════════════════════════════════════════════════════
-const AUTH_STORAGE_KEY='kouhei_subtitle_access_v1';
-const AUTH_SESSION_KEY='kouhei_subtitle_session_v1';
 const AUTH_ONLINE_SESSION_KEY='kouhei_subtitle_online_session_v1';
 const ONLINE_ADMIN_USERNAME='稻稻稻';
-// GitHub Pages online login configuration. Paste the two public values from
-// Supabase Dashboard > Settings > API here. Never paste a secret/service_role key.
+// Online login configuration. Only use a public publishable/anon key here.
 const ONLINE_AUTH_CONFIG={
   url:'https://fzxabmdnrkvpgraztcwi.supabase.co',
   anonKey:'sb_publishable_yU4Q1T2RuQfgwOW9Idtf9w__YssVHYe',
@@ -1025,40 +1017,6 @@ async function authTryOnlineUnlock(session,user){
   return false;
 }
 
-function authLoad(){
-  try{
-    const data=JSON.parse(localStorage.getItem(AUTH_STORAGE_KEY)||'null');
-    return data&&Array.isArray(data.accounts)?data:{version:1,accounts:[]};
-  }catch(e){return {version:1,accounts:[]};}
-}
-function authSave(data){localStorage.setItem(AUTH_STORAGE_KEY,JSON.stringify(data));}
-function authSalt(){
-  try{const a=new Uint32Array(4);crypto.getRandomValues(a);return Array.from(a,n=>n.toString(16)).join('');}
-  catch(e){return Date.now().toString(36)+Math.random().toString(36).slice(2);}
-}
-async function authHash(password,salt){
-  const value=salt+'|'+password;
-  try{
-    if(crypto.subtle){
-      const bytes=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(value));
-      return 'sha256:'+Array.from(new Uint8Array(bytes),b=>b.toString(16).padStart(2,'0')).join('');
-    }
-  }catch(e){}
-  // Compatibility fallback for local-file browsers without Web Crypto.
-  let h1=0xdeadbeef,h2=0x41c6ce57;
-  for(let i=0;i<value.length;i++){const c=value.charCodeAt(i);h1=Math.imul(h1^c,2654435761);h2=Math.imul(h2^c,1597334677);}
-  h1=Math.imul(h1^(h1>>>16),2246822507)^Math.imul(h2^(h2>>>13),3266489909);
-  h2=Math.imul(h2^(h2>>>16),2246822507)^Math.imul(h1^(h1>>>13),3266489909);
-  return 'local:'+(4294967296*(2097151&h2)+(h1>>>0)).toString(36);
-}
-function authSetMode(setup){
-  document.getElementById('authTitle').textContent=setup?'首次使用：创建管理员':'登录字幕工作台';
-  document.getElementById('authHint').textContent=setup?'请先创建管理员账号。以后可在右上角添加允许使用的人。':'请输入管理员分配给你的账号和密码。';
-  document.getElementById('authConfirmWrap').style.display=setup?'flex':'none';
-  document.getElementById('authConfirm').required=setup;
-  document.getElementById('authSubmit').textContent=setup?'创建并进入':'登录';
-  document.getElementById('authForm').dataset.setup=setup?'1':'0';
-}
 function authSetOnlineMode(){
   document.getElementById('authTitle').textContent='登录字幕工作台';
   document.getElementById('authHint').textContent='已有账号可直接登录；新用户名注册后需要管理员审核。';
@@ -1075,7 +1033,7 @@ function authSetOnlineMode(){
 }
 function authShowMissingOnlineConfig(){
   document.getElementById('authTitle').textContent='在线登录尚未配置';
-  document.getElementById('authHint').textContent='这个 GitHub Pages 页面已安全锁定。请由管理员在 HTML 中填写 Supabase Project URL 和 Publishable/anon key。';
+  document.getElementById('authHint').textContent='线上登录尚未完成配置，请联系管理员。';
   document.getElementById('authUsername').disabled=true;
   document.getElementById('authPassword').disabled=true;
   document.getElementById('authSubmit').disabled=true;
@@ -1083,7 +1041,7 @@ function authShowMissingOnlineConfig(){
 }
 function authShowLocalDisabled(){
   document.getElementById('authTitle').textContent='本地版不可用';
-  document.getElementById('authHint').textContent='请通过已发布的 GitHub Pages 在线地址登录使用。';
+  document.getElementById('authHint').textContent='请通过线上地址登录使用。';
   document.getElementById('authUsername').disabled=true;
   document.getElementById('authPassword').disabled=true;
   document.getElementById('authConfirm').disabled=true;
@@ -1098,7 +1056,6 @@ function authUnlock(account,onlineSession=null){
     sessionStorage.setItem(AUTH_ONLINE_SESSION_KEY,JSON.stringify(onlineSession));
     localStorage.setItem(AUTH_ONLINE_SESSION_KEY,JSON.stringify(onlineSession));
   }
-  else sessionStorage.setItem(AUTH_SESSION_KEY,account.username);
   document.getElementById('authOverlay').style.display='none';
   document.getElementById('authHeader').style.display='flex';
   document.getElementById('authCurrentUser').textContent='👤 '+account.username;
@@ -1121,39 +1078,23 @@ document.getElementById('authForm').addEventListener('submit',async e=>{
   const error=document.getElementById('authError');error.textContent='';
   const username=document.getElementById('authUsername').value.trim();
   const password=document.getElementById('authPassword').value;
-  const online=e.currentTarget.dataset.online==='1';
-  if(online){
-    if(!username||!password){error.textContent='请输入用户名和密码。';return;}
-    const button=document.getElementById('authSubmit');button.disabled=true;button.textContent='正在验证…';
-    try{
-      if(e.currentTarget.dataset.action==='register'){
-        if(password.length<6){throw new Error('密码至少需要 6 位。');}
-        if(password!==document.getElementById('authConfirm').value){throw new Error('两次输入的密码不一致。');}
-        const result=await authOnlineSignUp(username,password);
-        authSetOnlineAction('login');
-        error.style.color='var(--green)';
-        error.textContent=result.access_token?'注册成功，账号正在等待管理员审核。':'注册申请已提交，正在等待管理员审核。';
-      }else{
-        error.style.color='var(--red)';
-        const session=await authOnlineSignIn(username,password);
-        await authTryOnlineUnlock(session,session.user);
-      }
-    }catch(err){error.textContent=err.message||'登录失败，请检查网络和账号。';}
-    finally{button.disabled=false;button.textContent=e.currentTarget.dataset.action==='register'?'提交注册申请':'登录';}
-    return;
-  }
-  const setup=e.currentTarget.dataset.setup==='1';
-  if(!username||password.length<6){error.textContent='用户名不能为空，密码至少需要 6 位。';return;}
-  const data=authLoad();
-  if(setup){
-    if(password!==document.getElementById('authConfirm').value){error.textContent='两次输入的密码不一致。';return;}
-    const salt=authSalt();
-    const account={username,salt,hash:await authHash(password,salt),admin:true,createdAt:Date.now()};
-    data.accounts=[account];authSave(data);authUnlock(account);return;
-  }
-  const account=data.accounts.find(a=>a.username.toLocaleLowerCase()===username.toLocaleLowerCase());
-  if(!account||await authHash(password,account.salt)!==account.hash){error.textContent='用户名或密码不正确。';return;}
-  authUnlock(account);
+  if(!username||!password){error.textContent='请输入用户名和密码。';return;}
+  const button=document.getElementById('authSubmit');button.disabled=true;button.textContent='正在验证…';
+  try{
+    if(e.currentTarget.dataset.action==='register'){
+      if(password.length<6){throw new Error('密码至少需要 6 位。');}
+      if(password!==document.getElementById('authConfirm').value){throw new Error('两次输入的密码不一致。');}
+      const result=await authOnlineSignUp(username,password);
+      authSetOnlineAction('login');
+      error.style.color='var(--green)';
+      error.textContent=result.access_token?'注册成功，账号正在等待管理员审核。':'注册申请已提交，正在等待管理员审核。';
+    }else{
+      error.style.color='var(--red)';
+      const session=await authOnlineSignIn(username,password);
+      await authTryOnlineUnlock(session,session.user);
+    }
+  }catch(err){error.textContent=err.message||'登录失败，请检查网络和账号。';}
+  finally{button.disabled=false;button.textContent=e.currentTarget.dataset.action==='register'?'提交注册申请':'登录';}
 });
 function authSetOnlineAction(action){
   const register=action==='register';
@@ -1173,15 +1114,9 @@ document.getElementById('authModeSwitch').addEventListener('click',()=>{
 });
 document.getElementById('authLockBtn').addEventListener('click',()=>{
   try{if(typeof flushWorkspaceSave==='function') flushWorkspaceSave();}catch(e){}
-  sessionStorage.removeItem(AUTH_SESSION_KEY);sessionStorage.removeItem(AUTH_ONLINE_SESSION_KEY);
+  sessionStorage.removeItem(AUTH_ONLINE_SESSION_KEY);
   localStorage.removeItem(AUTH_ONLINE_SESSION_KEY);location.reload();
 });
-function authRenderAccounts(){
-  const data=authLoad();
-  document.getElementById('authAccountList').innerHTML=data.accounts.map((a,i)=>
-    `<div class="auth-account-row"><span>${escHtml(a.username)}${a.admin?'　管理员':''}</span>${a.admin?'':`<button class="auth-mini-btn" type="button" data-auth-delete="${i}" style="color:var(--red);">删除</button>`}</div>`
-  ).join('');
-}
 async function authRenderOnlineAccounts(){
   const list=document.getElementById('authAccountList');
   list.innerHTML='<div class="auth-account-row"><span>正在读取注册申请…</span></div>';
@@ -1216,24 +1151,9 @@ async function authSetOnlineApproval(userId,approved){
 document.getElementById('authManageBtn').addEventListener('click',async()=>{
   if(!authCurrentAccount?.admin) return;
   document.getElementById('authManageModal').classList.add('open');
-  const online=!!authCurrentAccount.online;
-  document.querySelector('#authManageModal h2').textContent=online?'注册申请审核':'允许使用的账号';
-  document.getElementById('authManageHint').textContent=online?'批准后对方重新登录即可进入；停用后将无法再次登录。':'只有这里列出的账号可以在本机浏览器登录。';
-  document.getElementById('authLocalCreate').style.display=online?'none':'flex';
-  document.getElementById('authAddUser').style.display=online?'none':'block';
-  if(online) await authRenderOnlineAccounts(); else authRenderAccounts();
+  await authRenderOnlineAccounts();
 });
 document.getElementById('authManageClose').addEventListener('click',()=>document.getElementById('authManageModal').classList.remove('open'));
-document.getElementById('authAddUser').addEventListener('click',async()=>{
-  const error=document.getElementById('authManageError');error.textContent='';
-  const username=document.getElementById('authNewUser').value.trim();
-  const password=document.getElementById('authNewPassword').value;
-  const data=authLoad();
-  if(!username||password.length<6){error.textContent='请输入用户名和至少 6 位密码。';return;}
-  if(data.accounts.some(a=>a.username.toLocaleLowerCase()===username.toLocaleLowerCase())){error.textContent='这个用户名已经存在。';return;}
-  const salt=authSalt();data.accounts.push({username,salt,hash:await authHash(password,salt),admin:false,createdAt:Date.now()});
-  authSave(data);document.getElementById('authNewUser').value='';document.getElementById('authNewPassword').value='';authRenderAccounts();
-});
 document.getElementById('authAccountList').addEventListener('click',e=>{
   if(e.target.closest('[data-auth-retry]')){authRenderOnlineAccounts();return;}
   const onlineBtn=e.target.closest('[data-online-user]');
@@ -1245,11 +1165,6 @@ document.getElementById('authAccountList').addEventListener('click',e=>{
       .catch(err=>{document.getElementById('authManageError').textContent=err.message;onlineBtn.disabled=false;});
     return;
   }
-  const btn=e.target.closest('[data-auth-delete]');if(!btn)return;
-  const data=authLoad(),index=parseInt(btn.dataset.authDelete,10),account=data.accounts[index];
-  if(!account||account.admin)return;
-  if(!window.confirm('确定删除账号“'+account.username+'”吗？'))return;
-  data.accounts.splice(index,1);authSave(data);authRenderAccounts();
 });
 authInit();
 
